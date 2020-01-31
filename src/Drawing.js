@@ -17,6 +17,7 @@ class Drawing
         this.activeLayer = null;
         this.lineTypes = {};
         this.headers = {};
+        this.entityRawStrings = [];
 
         this.setUnits('Unitless');
 
@@ -236,6 +237,10 @@ class Drawing
         return this;
     }
 
+    addEntityRawString(s) {
+        this.entityRawStrings.push(s);
+    }
+
     toDxfString()
     {
         let s = '';
@@ -274,6 +279,10 @@ class Drawing
             let layer = this.layers[layerName];
             s += layer.shapesToDxf();
             // let shapes = layer.getShapes();
+        }
+
+        for (let rawString of this.entityRawStrings) {
+            s += rawString;
         }
 
         s += '0\nENDSEC\n';
