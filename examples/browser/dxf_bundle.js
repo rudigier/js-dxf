@@ -90,6 +90,50 @@ class Face
 
 module.exports = Face;
 },{}],4:[function(require,module,exports){
+class Hatch
+{
+    /**
+     * @param {string} patternName - SOLID or ANSI31
+     * @param {number} patternDensity - (x < 1 for dense arrangement)
+     * @param {number} x1 - rectangle (bottom left corner x)
+     * @param {number} y1 - rectangle (bottom left corner y)
+     * @param {number} x2 - rectangle (top right corner x)
+     * @param {number} y2 - rectangle (top right corner y) 
+     */
+    constructor(patternName,patternDensity,x1,y1,x2,y2)
+    {
+        this.patternName = patternName,
+        this.patternDensity = patternDensity,
+        this.x1 = x1,
+        this.y1 = y1,
+        this.x2 = x2,
+        this.y2 = y2
+    }
+
+    toDxfString()
+    {
+        let type = (this.patternName == 'SOLID')? 1:0;
+        let s = `0\nHATCH\n`;
+        s += `8\nmain_layer\n6\nByLayer\n`;
+        s += `2\n${this.patternName}\n`;
+        s += `70\n${type}\n71\n${type}\n91\n1\n92\n0\n93\n4\n`;
+        s += `72\n1\n10\n${this.x1}\n20\n${this.y1}\n11\n${this.x2}\n21\n${this.y1}\n`;
+        s += `72\n1\n10\n${this.x2}\n20\n${this.y1}\n11\n${this.x2}\n21\n${this.y2}\n`;
+        s += `72\n1\n10\n${this.x2}\n20\n${this.y2}\n11\n${this.x1}\n21\n${this.y2}\n`;
+        s += `72\n1\n10\n${this.x1}\n20\n${this.y2}\n11\n${this.x1}\n21\n${this.y1}\n`;
+        s += `97\n4\n75\n0\n76\n1\n`;
+        if (type == 0)
+        {
+            s += `52\n0\n41\n${this.patternDensity}\n77\n0\n78\n0\n98\n0\n`;
+        }
+        return s;
+    }
+
+}
+
+
+module.exports = Hatch;
+},{}],5:[function(require,module,exports){
 class Layer
 {
     constructor(name, colorNumber, lineTypeName)
@@ -148,7 +192,7 @@ class Layer
 }
 
 module.exports = Layer;
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 class Line
 {
     constructor(x1, y1, x2, y2)
@@ -171,7 +215,7 @@ class Line
 }
 
 module.exports = Line;
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 class LineType
 {
     /**
@@ -220,7 +264,7 @@ class LineType
 }
 
 module.exports = LineType;
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 class Point
 {
     constructor(x, y)
@@ -240,7 +284,7 @@ class Point
 }
 
 module.exports = Point;
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 class Polyline
 {
     /**
@@ -273,7 +317,7 @@ class Polyline
 }
 
 module.exports = Polyline;
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 class Polyline3d
 {
     /**
@@ -306,7 +350,7 @@ class Polyline3d
 }
 
 module.exports = Polyline3d;
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 const H_ALIGN_CODES = ['left', 'center', 'right'];
 const V_ALIGN_CODES = ['baseline','bottom', 'middle', 'top'];
 
@@ -361,6 +405,7 @@ const Polyline = require('./Polyline');
 const Polyline3d = require('./Polyline3d');
 const Face = require('./Face');
 const Point = require('./Point');
+const Hatch = require('./Hatch');
 
 class Drawing
 {
@@ -425,7 +470,13 @@ class Drawing
         this.activeLayer.addShape(new Point(x, y));
         return this;
     }
-    
+
+    hatchRect(pattern,density,x1,y1,x2,y2)
+    {
+        this.activeLayer.addShape(new Hatch(pattern,density,x1,y1,x2,y2));
+        return this;
+    }
+
     drawRect(x1, y1, x2, y2)
     {
         this.activeLayer.addShape(new Line(x1, y1, x2, y1));
@@ -693,4 +744,4 @@ Drawing.UNITS = {
 
 module.exports = Drawing;
 
-},{"./Arc":1,"./Circle":2,"./Face":3,"./Layer":4,"./Line":5,"./LineType":6,"./Point":7,"./Polyline":8,"./Polyline3d":9,"./Text":10}]},{},[]);
+},{"./Arc":1,"./Circle":2,"./Face":3,"./Hatch":4,"./Layer":5,"./Line":6,"./LineType":7,"./Point":8,"./Polyline":9,"./Polyline3d":10,"./Text":11}]},{},[]);

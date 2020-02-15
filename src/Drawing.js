@@ -8,6 +8,7 @@ const Polyline = require('./Polyline');
 const Polyline3d = require('./Polyline3d');
 const Face = require('./Face');
 const Point = require('./Point');
+const Hatch = require('./Hatch');
 
 class Drawing
 {
@@ -72,7 +73,13 @@ class Drawing
         this.activeLayer.addShape(new Point(x, y));
         return this;
     }
-    
+
+    hatchRect(pattern,density,x1,y1,x2,y2)
+    {
+        this.activeLayer.addShape(new Hatch(pattern,density,x1,y1,x2,y2));
+        return this;
+    }
+
     drawRect(x1, y1, x2, y2)
     {
         this.activeLayer.addShape(new Line(x1, y1, x2, y1));
