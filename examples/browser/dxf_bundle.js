@@ -401,6 +401,9 @@ class Layer extends DatabaseObject
         if (this.lineTypeName) {
             s += `6\n${this.lineTypeName}\n`;
         }
+        if (this.name.toLowerCase() === "defpoints") {
+            s += `290\n0\n`;
+        }
         /* Hard-pointer handle to PlotStyleName object; seems mandatory, but any value seems OK,
          * including 0.
          */
