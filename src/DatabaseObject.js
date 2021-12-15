@@ -3,6 +3,8 @@ class DatabaseObject {
     {
         /* Handle should be assigned externally by document instance */
         this.handle = null
+        this.layer = null
+        this.block = null
         this.ownerHandle = null
         this.subclassMarkers = []
         if (subclass) {

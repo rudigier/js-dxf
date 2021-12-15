@@ -8,6 +8,7 @@ class Block extends DatabaseObject {
         this.name = name
         this.end = new DatabaseObject(["AcDbEntity","AcDbBlockEnd"])
         this.recordHandle = null
+        this.shapes = []
     }
 
     /* Internal method to set handle value for block end separator entity. */
@@ -20,7 +21,11 @@ class Block extends DatabaseObject {
         this.recordHandle = handle
     }
 
-    //XXX need some API to add content
+    addShape(shape)
+    {
+        this.shapes.push(shape)
+        shape.block = this
+    }
 
     toDxfString()
     {
@@ -37,11 +42,22 @@ class Block extends DatabaseObject {
         /* xref path name - nothing */
         s += "1\n\n"
 
-        //XXX dump content here
+        
+        s += shapesToDxf()
 
         s += "0\nENDBLK\n"
         s += this.end.toDxfString()
         return s
+    }
+    shapesToDxf()
+    {
+        let s = '';
+        for (let i = 0; i < this.shapes.length; ++i)
+        {
+            s += this.shapes[i].toDxfString();
+        } 
+        
+        return s;
     }
 }
 
