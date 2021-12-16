@@ -439,7 +439,7 @@ class Drawing
         //name section as HEADER section
         s += '2\nHEADER\n';
 
-        s += this._getHeader("HANDSEED", [[5, (this.handleCount + 1).toString(16)]])
+        s += this._getHeader("HANDSEED", [[5, (this._generateHandle()).toString(16)]])
         for (let header in this.headers) {
             s += this._getHeader(header, this.headers[header])
         }
