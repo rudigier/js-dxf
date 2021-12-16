@@ -43,7 +43,7 @@ class Block extends DatabaseObject {
         s += "1\n\n"
 
         
-        s += shapesToDxf()
+        s += this.shapesToDxf()
 
         s += "0\nENDBLK\n"
         s += this.end.toDxfString()
