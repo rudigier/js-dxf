@@ -1,3 +1,15 @@
+# About
+This repo is forked from [JS-DXF](https://github.com/ognjen-petrovic/js-dxf) (Ognjen Petrovic) and is used for a small project.
+
+# Improvements
+- Points can be used now
+- Polylines can be closed now
+- Linetypes can be set
+- Blocks are now available
+- Simplified code
+
+
+
 # JavaScript DXF writer
 
 Simple [DXF](https://en.wikipedia.org/wiki/AutoCAD_DXF) writer.
