@@ -72,6 +72,7 @@ class Block extends DatabaseObject {
         this.name = name
         this.end = new DatabaseObject(["AcDbEntity","AcDbBlockEnd"])
         this.recordHandle = null
+        this.shapes = []
     }
 
     /* Internal method to set handle value for block end separator entity. */
@@ -84,7 +85,11 @@ class Block extends DatabaseObject {
         this.recordHandle = handle
     }
 
-    //XXX need some API to add content
+    addShape(shape)
+    {
+        this.shapes.push(shape)
+        shape.block = this
+    }
 
     toDxfString()
     {
@@ -101,11 +106,22 @@ class Block extends DatabaseObject {
         /* xref path name - nothing */
         s += "1\n\n"
 
-        //XXX dump content here
+        
+        s += this.shapesToDxf()
 
         s += "0\nENDBLK\n"
         s += this.end.toDxfString()
         return s
+    }
+    shapesToDxf()
+    {
+        let s = '';
+        for (let i = 0; i < this.shapes.length; ++i)
+        {
+            s += this.shapes[i].toDxfString();
+        } 
+        
+        return s;
     }
 }
 
@@ -179,6 +195,8 @@ class DatabaseObject {
     {
         /* Handle should be assigned externally by document instance */
         this.handle = null
+        this.layer = null
+        this.block = null
         this.ownerHandle = null
         this.subclassMarkers = []
         if (subclass) {
@@ -959,34 +977,36 @@ class Viewport extends DatabaseObject {
 
 module.exports = Viewport
 },{"./DatabaseObject":6}],"Drawing":[function(require,module,exports){
-const LineType = require('./LineType');
-const Layer = require('./Layer');
-const Table = require('./Table');
-const DimStyleTable = require('./DimStyleTable');
-const TextStyle = require('./TextStyle');
-const Viewport = require('./Viewport');
-const AppId = require('./AppId');
-const Block = require('./Block');
-const BlockRecord = require('./BlockRecord');
-const Dictionary = require('./Dictionary');
-const Line = require('./Line');
-const Line3d = require('./Line3d');
-const Arc = require('./Arc');
-const Circle = require('./Circle');
-const Text = require('./Text');
-const Polyline = require('./Polyline');
-const Polyline3d = require('./Polyline3d');
-const Face = require('./Face');
-const Point = require('./Point');
+const LineType = require('./LineType')
+const Layer = require('./Layer')
+const Table = require('./Table')
+const DimStyleTable = require('./DimStyleTable')
+const TextStyle = require('./TextStyle')
+const Viewport = require('./Viewport')
+const AppId = require('./AppId')
+const Block = require('./Block')
+const BlockRecord = require('./BlockRecord')
+const Dictionary = require('./Dictionary')
+const Line = require('./Line')
+const Line3d = require('./Line3d')
+const Arc = require('./Arc')
+const Circle = require('./Circle')
+const Text = require('./Text')
+const Polyline = require('./Polyline')
+const Polyline3d = require('./Polyline3d')
+const Face = require('./Face')
+const Point = require('./Point')
 const Spline = require('./Spline')
-const Ellipse = require('./Ellipse');
+const Ellipse = require('./Ellipse')
 
 class Drawing
 {
     constructor()
     {
+        this.shapes = [];
         this.layers = {};
         this.activeLayer = null;
+        this.activeBlock = null;
         this.lineTypes = {};
         this.headers = {};
         this.tables = {};
@@ -1000,17 +1020,17 @@ class Drawing
         this.dictionary = new Dictionary()
         this._assignHandle(this.dictionary)
 
-        this.setUnits('Unitless');
+        this.setUnits('Unitless')
 
         for (const lineType of Drawing.LINE_TYPES) {
-            this.addLineType(lineType.name, lineType.description, lineType.elements);
+            this.addLineType(lineType.name, lineType.description, lineType.elements)
         }
 
         for (const layer of Drawing.LAYERS) {
-            this.addLayer(layer.name, layer.colorNumber, layer.lineTypeName);
+            this.addLayer(layer.name, layer.colorNumber, layer.lineTypeName)
         }
 
-        this.setActiveLayer('0');
+        this.setActiveLayer('0')
     }
 
 
@@ -1021,13 +1041,13 @@ class Drawing
      */
     addLineType(name, description, elements)
     {
-        this.lineTypes[name] = this._assignHandle(new LineType(name, description, elements));
+        this.lineTypes[name] = this._assignHandle(new LineType(name, description, elements))
         return this;
     }
 
     addLayer(name, colorNumber, lineTypeName)
     {
-        this.layers[name] = this._assignHandle(new Layer(name, colorNumber, lineTypeName));
+        this.layers[name] = this._assignHandle(new Layer(name, colorNumber, lineTypeName))
         return this;
     }
 
@@ -1050,24 +1070,39 @@ class Drawing
         block.setEndHandle(this._generateHandle())
         block.setRecordHandle(this._generateHandle())
         this.blocks[name] = block
+        this.activeBlock = block;
         return block
+    }
+
+    drawItem(shape) {
+        this._assignHandle(shape)
+
+        this.activeLayer && this.activeLayer.addShape(shape)
+        this.activeBlock && this.activeBlock.addShape(shape)
+
+        this.shapes.push(shape)
+
+        return shape;
     }
 
     drawLine(x1, y1, x2, y2, lineTypeName)
     {
-        this.activeLayer.addShape(this._assignHandle(new Line(x1, y1, x2, y2, lineTypeName)));
+        let shape = new Line(x1, y1, x2, y2, lineTypeName)
+        this.drawItem(shape)
         return this;
     }
 
     drawLine3d(x1, y1, z1, x2, y2, z2, lineTypeName)
     {
-        this.activeLayer.addShape(this._assignHandle(new Line3d(x1, y1, z1, x2, y2, z2, lineTypeName)));
+        let shape = new Line3d(x1, y1, z1, x2, y2, z2, lineTypeName)
+        this.drawItem(shape)
         return this;
     }
 
     drawPoint(x, y, lineTypeName)
     {
-        this.activeLayer.addShape(this._assignHandle(new Point(x, y, lineTypeName)));
+        let shape = new Point(x, y, lineTypeName)
+        this.drawItem(shape)
         return this;
     }
 
@@ -1075,16 +1110,16 @@ class Drawing
         const w = x2 - x1;
         const h = y2 - y1;
         cornerBulge = cornerBulge || 0;
-        let p = null;
+        let shape = null;
         if (!cornerLength) {
-            p = new Polyline([
+            shape = new Polyline([
                 [x1, y1],
                 [x1, y1 + h],
                 [x1 + w, y1 + h],
                 [x1 + w, y1]
-            ], true, 0, 0, lineTypeName);
+            ], true, 0, 0, lineTypeName)
         } else {
-            p = new Polyline([
+            shape = new Polyline([
                 [x1 + w - cornerLength, y1, cornerBulge],  // 1
                 [x1 + w, y1 + cornerLength], // 2
                 [x1 + w, y1 + h - cornerLength, cornerBulge], // 3
@@ -1096,8 +1131,7 @@ class Drawing
             ], true, 0 , 0, lineTypeName)
         }
 
-        this._assignHandle(p);
-        this.activeLayer.addShape(p);
+        this.drawItem(shape)
         return this;
     }
 
@@ -1111,7 +1145,8 @@ class Drawing
      */
     drawArc(x1, y1, r, startAngle, endAngle, lineTypeName)
     {
-        this.activeLayer.addShape(this._assignHandle(new Arc(x1, y1, r, startAngle, endAngle, lineTypeName)));
+        let shape = new Arc(x1, y1, r, startAngle, endAngle, lineTypeName)
+        this.drawItem(shape)
         return this;
     }
 
@@ -1123,7 +1158,8 @@ class Drawing
      */
     drawCircle(x1, y1, r, lineTypeName)
     {
-        this.activeLayer.addShape(this._assignHandle(new Circle(x1, y1, r, lineTypeName)));
+        let shape = new Circle(x1, y1, r, lineTypeName)
+        this.drawItem(shape)
         return this;
     }
 
@@ -1140,8 +1176,9 @@ class Drawing
     drawText(x1, y1, height, rotation, value, horizontalAlignment = 'left',
              verticalAlignment = 'baseline', lineTypeName)
     {
-        this.activeLayer.addShape(this._assignHandle(
-            new Text(x1, y1, height, rotation, value, horizontalAlignment, verticalAlignment, lineTypeName)));
+        let shape = new Text(x1, y1, height, rotation, value, horizontalAlignment, verticalAlignment, lineTypeName)
+        this.drawItem(shape)
+
         return this;
     }
 
@@ -1154,9 +1191,8 @@ class Drawing
      */
     drawPolyline(points, closed = false, startWidth = 0, endWidth = 0, lineTypeName)
     {
-        const p = new Polyline(points, closed, startWidth, endWidth, lineTypeName);
-        this._assignHandle(p);
-        this.activeLayer.addShape(p);
+        let shape = new Polyline(points, closed, startWidth, endWidth, lineTypeName)
+        this.drawItem(shape)
         return this;
     }
 
@@ -1170,11 +1206,11 @@ class Drawing
             if (point.length !== 3){
                 throw "Require 3D coordinate"
             }
-        });
-        const p = new Polyline3d(points, lineTypeName);
-        this._assignHandle(p);
-        p.assignVertexHandles(this._generateHandle.bind(this))
-        this.activeLayer.addShape(p);
+        })
+        let shape = new Polyline3d(points, lineTypeName)
+        shape.assignVertexHandles(this._generateHandle.bind(this))
+        this.drawItem(shape)
+
         return this;
     }
 
@@ -1184,7 +1220,7 @@ class Drawing
      */
     setTrueColor(trueColor)
     {
-        this.activeLayer.setTrueColor(trueColor);
+        this.activeLayer.setTrueColor(trueColor)
         return this;
     }
 
@@ -1199,8 +1235,9 @@ class Drawing
      */
     drawSpline(controlPoints, degree = 3, knots = null, weights = null, fitPoints = [], lineTypeName)
     {
-        this.activeLayer.addShape(this._assignHandle(
-            new Spline(controlPoints, degree, knots, weights, fitPoints, lineTypeName)));
+        let shape =  new Spline(controlPoints, degree, knots, weights, fitPoints, lineTypeName)
+        this.drawItem(shape)
+
         return this;
     }
 
@@ -1217,8 +1254,9 @@ class Drawing
     */
     drawEllipse(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle = 0, endAngle = 2 * Math.PI, lineTypeName)
     {
-        this.activeLayer.addShape(this._assignHandle(
-            new Ellipse(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle, endAngle, lineTypeName)));
+        let shape = new Ellipse(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle, endAngle, lineTypeName)
+        this.drawItem(shape)
+
         return this;
     }
 
@@ -1239,8 +1277,9 @@ class Drawing
      */
     drawFace(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, lineTypeName)
     {
-        this.activeLayer.addShape(this._assignHandle(
-            new Face(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, lineTypeName)));
+        let shape = new Face(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, lineTypeName)
+        this.drawItem(shape)
+        
         return this;
     }
 
@@ -1299,7 +1338,7 @@ class Drawing
      */
     setUnits(unit) {
         let value = (typeof Drawing.UNITS[unit] != 'undefined') ? Drawing.UNITS[unit]:Drawing.UNITS['Unitless'];
-        this.header('INSUNITS', [[70, Drawing.UNITS[unit]]]);
+        this.header('INSUNITS', [[70, Drawing.UNITS[unit]]])
         return this;
     }
 
@@ -1370,7 +1409,7 @@ class Drawing
 
         s += this._getHeader("HANDSEED", [[5, (this.handleCount + 1).toString(16)]])
         for (let header in this.headers) {
-            s += this._getHeader(header, this.headers[header]);
+            s += this._getHeader(header, this.headers[header])
         }
 
         //end section
@@ -1390,8 +1429,8 @@ class Drawing
         //name section as TABLES section
         s += '2\nTABLES\n';
 
-        s += this._getDxfLtypeTable();
-        s += this._getDxfLayerTable();
+        s += this._getDxfLtypeTable()
+        s += this._getDxfLayerTable()
 
         for (const table of Object.values(this.tables)) {
             s += table.toDxfString()
@@ -1427,8 +1466,8 @@ class Drawing
         s += '0\nSECTION\n';
         s += '2\nENTITIES\n';
 
-        for (const layer of Object.values(this.layers)) {
-            s += layer.shapesToDxf();
+        for (const shape in this.shapes.filter(shape => !shape.block)) {
+            s += shape.toDxfString()
         }
 
         s += '0\nENDSEC\n';
@@ -1437,7 +1476,7 @@ class Drawing
         //OBJECTS section
         s += '0\nSECTION\n';
         s += '2\nOBJECTS\n';
-        s += this.dictionary.toDxfString();
+        s += this.dictionary.toDxfString()
         s += '0\nENDSEC\n';
 
 
