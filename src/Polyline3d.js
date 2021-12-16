@@ -1,17 +1,16 @@
-const DatabaseObject = require('./DatabaseObject')
+const BaseEntity = require('./BaseEntity')
 
 
-class Polyline3d extends DatabaseObject
+class Polyline3d extends BaseEntity
 {
     /**
      * @param {array} points - Array of points like [ [x1, y1, z1], [x2, y2, z2]... ]
      */
-    constructor(points, lineTypeName)
+    constructor(points)
     {
-        super(["AcDbEntity", "AcDbPolyline3D"])
+        super("POLYLINE")
         this.points = points;
         this.pointHandles = null;
-        this.lineTypeName = lineTypeName;
     }
 
     assignVertexHandles(handleProvider) {
@@ -22,16 +21,11 @@ class Polyline3d extends DatabaseObject
     {
         //https://www.autodesk.com/techpubs/autocad/acad2000/dxf/polyline_dxf_06.htm
         //https://www.autodesk.com/techpubs/autocad/acad2000/dxf/vertex_dxf_06.htm
-        let s = `0\nPOLYLINE\n`;
-        s += super.toDxfString()
-        s += `8\n${this.layer.name}\n`;
+        let s = super.toDxfString()
+        
         s += `66\n1\n70\n8\n`;
-        if (this.lineTypeName) {
-            s += `6\n${this.lineTypeName}\n`;
-        }
 
-        for (let i = 0; i < this.points.length; ++i)
-        {
+        for (let i = 0; i < this.points.length; ++i) {
             s += `0\nVERTEX\n`;
             s += "100\nAcDbEntity\n";
             s += "100\nAcDbVertex\n";

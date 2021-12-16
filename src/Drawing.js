@@ -89,7 +89,6 @@ class Drawing
         const block = new Block(name)
         this._assignHandle(block)
         block.setEndHandle(this._generateHandle())
-        block.setRecordHandle(this._generateHandle())
         this.blocks[name] = block
         this.activeBlock = block;
         return block
@@ -108,21 +107,24 @@ class Drawing
 
     drawLine(x1, y1, x2, y2, lineTypeName)
     {
-        let shape = new Line(x1, y1, x2, y2, lineTypeName)
+        let shape = new Line(x1, y1, x2, y2)
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
         return this;
     }
 
     drawLine3d(x1, y1, z1, x2, y2, z2, lineTypeName)
     {
-        let shape = new Line3d(x1, y1, z1, x2, y2, z2, lineTypeName)
+        let shape = new Line3d(x1, y1, z1, x2, y2, z2)
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
         return this;
     }
 
     drawPoint(x, y, lineTypeName)
     {
-        let shape = new Point(x, y, lineTypeName)
+        let shape = new Point(x, y)
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
         return this;
     }
@@ -138,7 +140,7 @@ class Drawing
                 [x1, y1 + h],
                 [x1 + w, y1 + h],
                 [x1 + w, y1]
-            ], true, 0, 0, lineTypeName)
+            ], true, 0, 0)
         } else {
             shape = new Polyline([
                 [x1 + w - cornerLength, y1, cornerBulge],  // 1
@@ -149,9 +151,10 @@ class Drawing
                 [x1, y1 + h - cornerLength], // 6
                 [x1, y1 + cornerLength, cornerBulge], // 7
                 [x1 + cornerLength, y1], // 8
-            ], true, 0 , 0, lineTypeName)
+            ], true, 0 , 0)
         }
 
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
         return this;
     }
@@ -166,7 +169,8 @@ class Drawing
      */
     drawArc(x1, y1, r, startAngle, endAngle, lineTypeName)
     {
-        let shape = new Arc(x1, y1, r, startAngle, endAngle, lineTypeName)
+        let shape = new Arc(x1, y1, r, startAngle, endAngle)
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
         return this;
     }
@@ -179,7 +183,8 @@ class Drawing
      */
     drawCircle(x1, y1, r, lineTypeName)
     {
-        let shape = new Circle(x1, y1, r, lineTypeName)
+        let shape = new Circle(x1, y1, r)
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
         return this;
     }
@@ -197,7 +202,8 @@ class Drawing
     drawText(x1, y1, height, rotation, value, horizontalAlignment = 'left',
              verticalAlignment = 'baseline', lineTypeName)
     {
-        let shape = new Text(x1, y1, height, rotation, value, horizontalAlignment, verticalAlignment, lineTypeName)
+        let shape = new Text(x1, y1, height, rotation, value, horizontalAlignment, verticalAlignment)
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
 
         return this;
@@ -212,7 +218,8 @@ class Drawing
      */
     drawPolyline(points, closed = false, startWidth = 0, endWidth = 0, lineTypeName)
     {
-        let shape = new Polyline(points, closed, startWidth, endWidth, lineTypeName)
+        let shape = new Polyline(points, closed, startWidth, endWidth)
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
         return this;
     }
@@ -228,8 +235,9 @@ class Drawing
                 throw "Require 3D coordinate"
             }
         })
-        let shape = new Polyline3d(points, lineTypeName)
+        let shape = new Polyline3d(points)
         shape.assignVertexHandles(this._generateHandle.bind(this))
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
 
         return this;
@@ -256,7 +264,8 @@ class Drawing
      */
     drawSpline(controlPoints, degree = 3, knots = null, weights = null, fitPoints = [], lineTypeName)
     {
-        let shape =  new Spline(controlPoints, degree, knots, weights, fitPoints, lineTypeName)
+        let shape =  new Spline(controlPoints, degree, knots, weights, fitPoints)
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
 
         return this;
@@ -275,7 +284,8 @@ class Drawing
     */
     drawEllipse(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle = 0, endAngle = 2 * Math.PI, lineTypeName)
     {
-        let shape = new Ellipse(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle, endAngle, lineTypeName)
+        let shape = new Ellipse(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle, endAngle)
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
 
         return this;
@@ -298,7 +308,8 @@ class Drawing
      */
     drawFace(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, lineTypeName)
     {
-        let shape = new Face(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, lineTypeName)
+        let shape = new Face(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4)
+        shape.setLineType(lineTypeName)
         this.drawItem(shape)
         
         return this;
@@ -461,7 +472,9 @@ class Drawing
         blockRecordTable.handle = this.blockRecordTableHandle
         Object.values(this.blocks).forEach(b => {
             const rec = new BlockRecord(b.name)
-            rec.handle = b.recordHandle
+            this._assignHandle(rec)
+            //b.ownerHandle = rec.handle
+            b.setOwner(rec)
             blockRecordTable.add(rec)
         })
         s += blockRecordTable.toDxfString()
@@ -487,9 +500,10 @@ class Drawing
         s += '0\nSECTION\n';
         s += '2\nENTITIES\n';
 
-        for (const shape in this.shapes.filter(shape => !shape.block)) {
-            s += shape.toDxfString()
+        for (let i = 0; i < this.shapes.length; ++i) {
+            s += this.shapes[i].toDxfString()
         }
+
 
         s += '0\nENDSEC\n';
 

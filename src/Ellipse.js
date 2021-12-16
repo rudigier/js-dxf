@@ -1,7 +1,7 @@
-const DatabaseObject = require('./DatabaseObject')
+const BaseEntity = require('./BaseEntity')
 
 
-class Ellipse extends DatabaseObject {
+class Ellipse extends BaseEntity {
     /**
      * Creates an ellipse.
      * @param {number} x1 - Center x
@@ -11,10 +11,9 @@ class Ellipse extends DatabaseObject {
      * @param {number} axisRatio - Ratio of minor axis to major axis
      * @param {number} startAngle - Start angle
      * @param {number} endAngle - End angle
-     * @param {[string]} lineTypeName - the name of the lineType
      */
-    constructor(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle, endAngle, lineTypeName) {
-        super(["AcDbEntity", "AcDbEllipse"])
+    constructor(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle, endAngle) {
+        super("ELLIPSE")
         this.x1 = x1;
         this.y1 = y1;
         this.majorAxisX = majorAxisX;
@@ -22,17 +21,12 @@ class Ellipse extends DatabaseObject {
         this.axisRatio = axisRatio;
         this.startAngle = startAngle;
         this.endAngle = endAngle;
-        this.lineTypeName = lineTypeName;
     }
 
     toDxfString() {
         // https://www.autodesk.com/techpubs/autocad/acadr14/dxf/ellipse_al_u05_c.htm
-        let s = `0\nELLIPSE\n`;
-        s += super.toDxfString()
-        s += `8\n${this.layer.name}\n`;
-        if (this.lineTypeName) {
-            s += `6\n${this.lineTypeName}\n`;
-        }
+        let s = super.toDxfString();
+
         s += `10\n${this.x1}\n`;
         s += `20\n${this.y1}\n`;
         s += `30\n0\n`;

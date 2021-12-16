@@ -3,14 +3,18 @@ const DatabaseObject = require('./DatabaseObject')
 
 class Layer extends DatabaseObject
 {
-    constructor(name, colorNumber, lineTypeName = null)
+    constructor(name, colorNumber)
     {
         super(["AcDbSymbolTableRecord", "AcDbLayerTableRecord"])
         this.name = name;
         this.colorNumber = colorNumber;
-        this.lineTypeName = lineTypeName;
+        this.lineTypeName = null;
         this.shapes = [];
         this.trueColor = -1;
+    }
+
+    setLineType(lineTypeName) {
+        this.lineTypeName = lineTypeName;
     }
 
     toDxfString()
@@ -54,18 +58,6 @@ class Layer extends DatabaseObject
     getShapes()
     {
         return this.shapes;
-    }
-
-    shapesToDxf()
-    {
-        let s = '';
-        for (let i = 0; i < this.shapes.length; ++i)
-        {
-            s += this.shapes[i].toDxfString();
-        } 
-        
-        
-        return s;
     }
 }
 

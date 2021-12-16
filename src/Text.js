@@ -1,10 +1,10 @@
-const DatabaseObject = require('./DatabaseObject')
+const BaseEntity = require('./BaseEntity')
 
 
 const H_ALIGN_CODES = ['left', 'center', 'right'];
 const V_ALIGN_CODES = ['baseline','bottom', 'middle', 'top'];
 
-class Text extends DatabaseObject
+class Text extends BaseEntity
 {
     /**
      * @param {number} x1 - x
@@ -14,11 +14,10 @@ class Text extends DatabaseObject
      * @param {string} value - the string itself
      * @param {string} [horizontalAlignment="left"] left | center | right
      * @param {string} [verticalAlignment="baseline"] baseline | bottom | middle | top
-     * @param {[string]} lineTypeName - the name of the lineType
      */
-    constructor(x1, y1, height, rotation, value, horizontalAlignment = 'left', verticalAlignment = 'baseline', lineTypeName)
+    constructor(x1, y1, height, rotation, value, horizontalAlignment = 'left', verticalAlignment = 'baseline')
     {
-        super(["AcDbEntity", "AcDbText"])
+        super("TEXT")
         this.x1 = x1;
         this.y1 = y1;
         this.height = height;
@@ -26,18 +25,13 @@ class Text extends DatabaseObject
         this.value = value;
         this.hAlign = horizontalAlignment;
         this.vAlign = verticalAlignment;
-        this.lineTypeName = lineTypeName;
     }
 
     toDxfString()
     {
         //https://www.autodesk.com/techpubs/autocad/acadr14/dxf/text_al_u05_c.htm
-        let s = `0\nTEXT\n`;
-        s += super.toDxfString()
-        s += `8\n${this.layer.name}\n`;
-        if (this.lineTypeName) {
-            s += `6\n${this.lineTypeName}\n`;
-        }
+        let s = super.toDxfString()
+        
         s += `10\n${this.x1}\n20\n${this.y1}\n30\n0\n`;
         s += `40\n${this.height}\n`;
         s += `1\n${this.value}\n`;

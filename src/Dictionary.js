@@ -9,10 +9,7 @@ class Dictionary extends DatabaseObject {
     }
 
     addChildDictionary(name, dictionary) {
-        if (!this.handle) {
-            throw new Error("Handle must be set before adding children")
-        }
-        dictionary.ownerHandle = this.handle
+        dictionary.setOwner(this)
         this.children[name] = dictionary
     }
 

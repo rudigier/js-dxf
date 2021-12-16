@@ -5,7 +5,7 @@ class DatabaseObject {
         this.handle = null
         this.layer = null
         this.block = null
-        this.ownerHandle = null
+        this.owner = null
         this.subclassMarkers = []
         if (subclass) {
             if (Array.isArray(subclass)) {
@@ -18,6 +18,11 @@ class DatabaseObject {
         }
     }
 
+    /* Internal method to set handle value for block record in block records table. */
+    setOwner(owner) {
+        this.owner = owner
+    }
+
     toDxfString()
     {
         let s = ""
@@ -26,8 +31,8 @@ class DatabaseObject {
         } else {
             console.warn("No handle assigned to entity", this)
         }
-        if (this.ownerHandle) {
-            s += `330\n${this.ownerHandle.toString(16)}\n`
+        if (this.owner && this.owner.handle) {
+            s += `330\n${this.owner.handle.toString(16)}\n`
         }
         for (const marker of this.subclassMarkers) {
             s += `100\n${marker}\n`

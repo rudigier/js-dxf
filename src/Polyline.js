@@ -1,33 +1,27 @@
-const DatabaseObject = require('./DatabaseObject')
+const BaseEntity = require('./BaseEntity')
 
 
-class Polyline extends DatabaseObject
+class Polyline extends BaseEntity
 {
     /**
      * @param {array} points - Array of points like [ [x1, y1], [x2, y2, bulge]... ]
      * @param {boolean} closed
      * @param {number} startWidth
      * @param {number} endWidth
-     * @param {[string]} lineTypeName - the name of the lineType
      */
-    constructor(points, closed = false, startWidth = 0, endWidth = 0, lineTypeName)
+    constructor(points, closed = false, startWidth = 0, endWidth = 0)
     {
-        super(["AcDbEntity", "AcDbPolyline"])
+        super("LWPOLYLINE")
         this.points = points;
         this.closed = closed;
         this.startWidth = startWidth;
         this.endWidth = endWidth;
-        this.lineTypeName = lineTypeName;
     }
 
     toDxfString()
     {
-        let s = `0\nLWPOLYLINE\n`;
-        s += super.toDxfString()
-        s += `8\n${this.layer.name}\n`;
-        if (this.lineTypeName) {
-            s += `6\n${this.lineTypeName}\n`;
-        }
+        let s = super.toDxfString()
+
         s += "62\n256\n"
         s += "370\n-1\n"
         s += `90\n${this.points.length}\n`;

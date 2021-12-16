@@ -1,7 +1,7 @@
-const DatabaseObject = require('./DatabaseObject')
+const BaseEntity = require('./BaseEntity')
 
 
-class Spline extends DatabaseObject
+class Spline extends BaseEntity
 {
     /**
      * Creates a spline. See https://www.autodesk.com/techpubs/autocad/acad2000/dxf/spline_dxf_06.htm
@@ -10,11 +10,10 @@ class Spline extends DatabaseObject
      * @param {[number]} knots - Knot vector array. If null, will use a uniform knot vector. Default is null
      * @param {[number]} weights - Control point weights. If provided, must be one weight for each control point. Default is null
      * @param {[Array]} fitPoints - Array of fit points like [ [x1, y1], [x2, y2]... ]
-     * @param {[string]} lineTypeName - the name of the lineType
      */
-    constructor(controlPoints, degree = 3, knots = null, weights = null, fitPoints = [], lineTypeName)
+    constructor(controlPoints, degree = 3, knots = null, weights = null, fitPoints = [])
     {
-        super(["AcDbEntity", "AcDbSpline"])
+        super("SPLINE")
         if (controlPoints.length < degree + 1) {
             throw new Error(`For degree ${degree} spline, expected at least ${degree + 1} control points, but received only ${controlPoints.length}`);
         }
@@ -48,7 +47,6 @@ class Spline extends DatabaseObject
         this.fitPoints = fitPoints;
         this.degree = degree;
         this.weights = weights;
-        this.lineTypeName = lineTypeName;
 
         const closed = 0;
         const periodic = 0;
@@ -75,12 +73,8 @@ class Spline extends DatabaseObject
 
     toDxfString() {
         // https://www.autodesk.com/techpubs/autocad/acad2000/dxf/spline_dxf_06.htm
-        let s = `0\nSPLINE\n`;
-        s += super.toDxfString()
-        s += `8\n${this.layer.name}\n`;
-        if (this.lineTypeName) {
-            s += `6\n${this.lineTypeName}\n`;
-        }
+        let s = super.toDxfString()
+       
         s += `210\n0.0\n220\n0.0\n230\n1.0\n`;
 
         s += `70\n${this.type}\n`;

@@ -7,18 +7,12 @@ class Block extends DatabaseObject {
         super(["AcDbEntity", "AcDbBlockBegin"])
         this.name = name
         this.end = new DatabaseObject(["AcDbEntity","AcDbBlockEnd"])
-        this.recordHandle = null
         this.shapes = []
     }
 
     /* Internal method to set handle value for block end separator entity. */
     setEndHandle(handle) {
         this.end.handle = handle
-    }
-
-    /* Internal method to set handle value for block record in block records table. */
-    setRecordHandle(handle) {
-        this.recordHandle = handle
     }
 
     addShape(shape)
