@@ -1,5 +1,5 @@
 # About
-This repo is forked from [JS-DXF](https://github.com/ognjen-petrovic/js-dxf) and is used for a small project.
+This repo is forked from [JS-DXF](https://github.com/ognjen-petrovic/js-dxf) (Ognjen Petrovic) and is used for a small project.
 
 # Improvements
 - Points can be used now
