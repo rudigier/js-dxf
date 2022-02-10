@@ -12,7 +12,7 @@ class Arc extends BaseEntity
      */
     constructor(x1, y1, r, startAngle, endAngle)
     {
-        super(["AcDbEntity", "AcDbArc"])
+        super("ARC")
         this.x1 = x1;
         this.y1 = y1;
         this.r = r;
