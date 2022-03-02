@@ -1,12 +1,8 @@
-const DatabaseObject = require('./DatabaseObject')
+const BaseTableRecord = require('./BaseTableRecord')
 
-
-class Layer extends DatabaseObject
-{
-    constructor(name, colorNumber)
-    {
-        super(["AcDbSymbolTableRecord", "AcDbLayerTableRecord"])
-        this.name = name;
+class Layer extends BaseTableRecord {
+    constructor(name, colorNumber) {
+        super("LAYER", name);
         this.colorNumber = colorNumber;
         this.lineTypeName = null;
         this.shapes = [];
@@ -17,20 +13,15 @@ class Layer extends DatabaseObject
         this.lineTypeName = lineTypeName;
     }
 
-    toDxfString()
-    {
-        let s = '0\nLAYER\n';
-        s += super.toDxfString();
-        s += `2\n${this.name}\n`;
-        if (this.trueColor !== -1)
-        {
-            s += `420\n${this.trueColor}\n`
-        }
-        else
-        {
+    toDxfString() {
+        let s = super.toDxfString();
+
+        if (this.trueColor !== -1) {
+            s += `420\n${this.trueColor}\n`;
+        } else {
             s += `62\n${this.colorNumber}\n`;
         }
-        s += '70\n0\n';
+        s += "70\n0\n";
         if (this.lineTypeName) {
             s += `6\n${this.lineTypeName}\n`;
         }
@@ -38,25 +29,22 @@ class Layer extends DatabaseObject
             s += `290\n0\n`;
         }
         /* Hard-pointer handle to PlotStyleName object; seems mandatory, but any value seems OK,
-         * including 0.
-         */
+            * including 0.
+            */
         s += "390\n1\n";
         return s;
     }
 
-    setTrueColor(color)
-    {
+    setTrueColor(color) {
         this.trueColor = color;
     }
 
-    addShape(shape)
-    {
+    addShape(shape) {
         this.shapes.push(shape);
         shape.layer = this;
     }
 
-    getShapes()
-    {
+    getShapes() {
         return this.shapes;
     }
 }

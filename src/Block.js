@@ -1,12 +1,13 @@
-const DatabaseObject = require('./DatabaseObject')
+const BaseEntity = require('./BaseEntity')
 
-
-class Block extends DatabaseObject {
+class Block extends BaseEntity {
     constructor(name)
     {
-        super(["AcDbEntity", "AcDbBlockBegin"])
+        super("BLOCK")
         this.name = name
-        this.end = new DatabaseObject(["AcDbEntity","AcDbBlockEnd"])
+
+        this.end = new BaseEntity("ENDBLK")
+
         this.shapes = []
     }
 
@@ -14,6 +15,12 @@ class Block extends DatabaseObject {
     setEndHandle(handle) {
         this.end.handle = handle
     }
+    setOwner(item) {
+        // super.setOwner.apply(this, item)
+        this.owner = item
+        this.end.setOwner(item)
+    }
+
 
     addShape(shape)
     {
@@ -23,9 +30,9 @@ class Block extends DatabaseObject {
 
     toDxfString()
     {
-        let s = "0\nBLOCK\n"
-        s += super.toDxfString()
+        let s = super.toDxfString()
         s += `2\n${this.name}\n`
+
         /* No flags set */
         s += "70\n0\n"
         /* Block top left corner */
@@ -36,10 +43,8 @@ class Block extends DatabaseObject {
         /* xref path name - nothing */
         s += "1\n\n"
 
-        
         s += this.shapesToDxf()
 
-        s += "0\nENDBLK\n"
         s += this.end.toDxfString()
         return s
     }

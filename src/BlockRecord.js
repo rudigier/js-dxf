@@ -1,17 +1,13 @@
-const DatabaseObject = require('./DatabaseObject')
+const BaseTableRecord = require('./BaseTableRecord')
 
-
-class BlockRecord extends DatabaseObject {
+class BlockRecord extends BaseTableRecord {
     constructor(name) {
-        super(["AcDbSymbolTableRecord", "AcDbBlockTableRecord"])
-        this.name = name
+        super("BLOCK_RECORD", name)
     }
 
     toDxfString()
     {
-        let s = "0\nBLOCK_RECORD\n"
-        s += super.toDxfString()
-        s += `2\n${this.name}\n`
+        let s = super.toDxfString()
         /* No flags set */
         s += "70\n0\n"
         /* Block explodability */

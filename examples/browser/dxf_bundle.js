@@ -20,7 +20,7 @@ class AppId extends DatabaseObject {
 }
 
 module.exports = AppId
-},{"./DatabaseObject":7}],2:[function(require,module,exports){
+},{"./DatabaseObject":9}],2:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -56,62 +56,98 @@ class Arc extends BaseEntity
 
 module.exports = Arc;
 },{"./BaseEntity":3}],3:[function(require,module,exports){
+const DatabaseObject = require("./DatabaseObject");
+
+const EntityTranslations = {
+  ARC: "AcDbArc",
+  CIRCLE: "AcDbCircle",
+  "3DFACE": "AcDbFace",
+  ELLIPSE: "AcDbEllipse",
+  LINE: "AcDbLine",
+  POINT: "AcDbPoint",
+  LWPOLYLINE: "AcDbPolyline",
+  POLYLINE: "AcDbPolyline3D",
+  SPLINE: "AcDbSpline",
+  TEXT: "AcDbText",
+  BLOCK: "AcDbBlockBegin",
+  ENDBLK: "AcDbBlockEnd",
+  INSERT: "AcDbBlockReference",
+};
+
+class BaseEntity extends DatabaseObject {
+  constructor(type) {
+    if (!EntityTranslations[type]) {
+      console.log("BaseEntity: no valid type is set", type);
+    }
+
+    super(["AcDbEntity", EntityTranslations[type]]);
+
+    this.type = type;
+    this.lineTypeName = null;
+  }
+
+  setLineType(lineTypeName) {
+    this.lineTypeName = lineTypeName;
+  }
+
+  toDxfString() {
+    let s = `0\n${this.type}\n`;
+    s += super.toDxfString();
+    if (this.layer?.name) {
+      s += `8\n${this.layer.name}\n`;
+    }
+    if (this.lineTypeName) {
+      s += `6\n${this.lineTypeName}\n`;
+    }
+
+    return s;
+  }
+}
+
+module.exports = BaseEntity;
+
+},{"./DatabaseObject":9}],4:[function(require,module,exports){
 const DatabaseObject = require('./DatabaseObject')
 
 const EntityTranslations = {
-    'ARC': 'AcDbArc',
-    'CIRCLE': 'AcDbCircle',
-    '3DFACE': 'AcDbFace',
-    'ELLIPSE': 'AcDbEllipse',
-    'LINE': 'AcDbLine',
-    'POINT': 'AcDbPoint',
-    'LWPOLYLINE': 'AcDbPolyline',
-    'POLYLINE': 'AcDbPolyline3D',
-    'SPLINE': 'AcDbSpline',
-    'TEXT': 'AcDbText'
+    'LAYER': 'AcDbLayerTableRecord',
+    'BLOCK_RECORD': 'AcDbBlockTableRecord'
 }
 
 
-class BaseEntity extends DatabaseObject {
-    constructor(type) {
+class BaseTableRecord extends DatabaseObject {
+    constructor(type, name) {
         if(!EntityTranslations[type]) {
-            console.log("BaseEntity: no valid type is set", type)
+            console.log("BaseTableRecord: no valid type is set", type)
         }
 
-        super(["AcDbEntity", EntityTranslations[type]])
+        super(["AcDbSymbolTableRecord", EntityTranslations[type]])
 
         this.type = type
-        this.lineTypeName = null
-    }
-
-    setLineType(lineTypeName) {
-        this.lineTypeName = lineTypeName;
+        this.name = name
     }
 
     toDxfString() {
         let s = `0\n${this.type}\n`
         s += super.toDxfString()
-        s += `8\n${this.layer.name}\n`
-
-        if (this.lineTypeName) {
-            s += `6\n${this.lineTypeName}\n`
-        }
+        s += `2\n${this.name}\n`;
         
         return s
     }
 }
 
-module.exports = BaseEntity;
-},{"./DatabaseObject":7}],4:[function(require,module,exports){
-const DatabaseObject = require('./DatabaseObject')
+module.exports = BaseTableRecord;
+},{"./DatabaseObject":9}],5:[function(require,module,exports){
+const BaseEntity = require('./BaseEntity')
 
-
-class Block extends DatabaseObject {
+class Block extends BaseEntity {
     constructor(name)
     {
-        super(["AcDbEntity", "AcDbBlockBegin"])
+        super("BLOCK")
         this.name = name
-        this.end = new DatabaseObject(["AcDbEntity","AcDbBlockEnd"])
+
+        this.end = new BaseEntity("ENDBLK")
+
         this.shapes = []
     }
 
@@ -119,6 +155,12 @@ class Block extends DatabaseObject {
     setEndHandle(handle) {
         this.end.handle = handle
     }
+    setOwner(item) {
+        // super.setOwner.apply(this, item)
+        this.owner = item
+        this.end.setOwner(item)
+    }
+
 
     addShape(shape)
     {
@@ -128,9 +170,9 @@ class Block extends DatabaseObject {
 
     toDxfString()
     {
-        let s = "0\nBLOCK\n"
-        s += super.toDxfString()
+        let s = super.toDxfString()
         s += `2\n${this.name}\n`
+
         /* No flags set */
         s += "70\n0\n"
         /* Block top left corner */
@@ -141,10 +183,8 @@ class Block extends DatabaseObject {
         /* xref path name - nothing */
         s += "1\n\n"
 
-        
         s += this.shapesToDxf()
 
-        s += "0\nENDBLK\n"
         s += this.end.toDxfString()
         return s
     }
@@ -161,21 +201,17 @@ class Block extends DatabaseObject {
 }
 
 module.exports = Block
-},{"./DatabaseObject":7}],5:[function(require,module,exports){
-const DatabaseObject = require('./DatabaseObject')
+},{"./BaseEntity":3}],6:[function(require,module,exports){
+const BaseTableRecord = require('./BaseTableRecord')
 
-
-class BlockRecord extends DatabaseObject {
+class BlockRecord extends BaseTableRecord {
     constructor(name) {
-        super(["AcDbSymbolTableRecord", "AcDbBlockTableRecord"])
-        this.name = name
+        super("BLOCK_RECORD", name)
     }
 
     toDxfString()
     {
-        let s = "0\nBLOCK_RECORD\n"
-        s += super.toDxfString()
-        s += `2\n${this.name}\n`
+        let s = super.toDxfString()
         /* No flags set */
         s += "70\n0\n"
         /* Block explodability */
@@ -187,7 +223,32 @@ class BlockRecord extends DatabaseObject {
 }
 
 module.exports = BlockRecord
-},{"./DatabaseObject":7}],6:[function(require,module,exports){
+},{"./BaseTableRecord":4}],7:[function(require,module,exports){
+const BaseEntity = require('./BaseEntity')
+
+class BlockRecord extends BaseEntity {
+    constructor(name) {
+        super("INSERT")
+        this.name = name
+    }
+
+    toDxfString()
+    {
+        let s = super.toDxfString()
+     
+        s += `2\n${this.name}\n`
+        
+        /* Block top left corner */
+        s += "10\n0\n"
+        s += "20\n0\n"
+        s += "30\n0\n"
+     
+        return s
+    }
+}
+
+module.exports = BlockRecord
+},{"./BaseEntity":3}],8:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 class Circle extends BaseEntity
@@ -217,7 +278,7 @@ class Circle extends BaseEntity
 }
 
 module.exports = Circle;
-},{"./BaseEntity":3}],7:[function(require,module,exports){
+},{"./BaseEntity":3}],9:[function(require,module,exports){
 class DatabaseObject {
     constructor(subclass = null)
     {
@@ -262,7 +323,7 @@ class DatabaseObject {
 }
 
 module.exports = DatabaseObject
-},{}],8:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 const DatabaseObject = require('./DatabaseObject')
 
 
@@ -296,7 +357,7 @@ class Dictionary extends DatabaseObject {
 }
 
 module.exports = Dictionary
-},{"./DatabaseObject":7}],9:[function(require,module,exports){
+},{"./DatabaseObject":9}],11:[function(require,module,exports){
 const DatabaseObject = require('./DatabaseObject')
 const Table = require('./Table')
 
@@ -324,7 +385,7 @@ class DimStyleTable extends Table {
 }
 
 module.exports = DimStyleTable
-},{"./DatabaseObject":7,"./Table":20}],10:[function(require,module,exports){
+},{"./DatabaseObject":9,"./Table":22}],12:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -368,7 +429,7 @@ class Ellipse extends BaseEntity {
 }
 
 module.exports = Ellipse;
-},{"./BaseEntity":3}],11:[function(require,module,exports){
+},{"./BaseEntity":3}],13:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -405,16 +466,12 @@ class Face extends BaseEntity
 }
 
 module.exports = Face;
-},{"./BaseEntity":3}],12:[function(require,module,exports){
-const DatabaseObject = require('./DatabaseObject')
+},{"./BaseEntity":3}],14:[function(require,module,exports){
+const BaseTableRecord = require('./BaseTableRecord')
 
-
-class Layer extends DatabaseObject
-{
-    constructor(name, colorNumber)
-    {
-        super(["AcDbSymbolTableRecord", "AcDbLayerTableRecord"])
-        this.name = name;
+class Layer extends BaseTableRecord {
+    constructor(name, colorNumber) {
+        super("LAYER", name);
         this.colorNumber = colorNumber;
         this.lineTypeName = null;
         this.shapes = [];
@@ -425,20 +482,15 @@ class Layer extends DatabaseObject
         this.lineTypeName = lineTypeName;
     }
 
-    toDxfString()
-    {
-        let s = '0\nLAYER\n';
-        s += super.toDxfString();
-        s += `2\n${this.name}\n`;
-        if (this.trueColor !== -1)
-        {
-            s += `420\n${this.trueColor}\n`
-        }
-        else
-        {
+    toDxfString() {
+        let s = super.toDxfString();
+
+        if (this.trueColor !== -1) {
+            s += `420\n${this.trueColor}\n`;
+        } else {
             s += `62\n${this.colorNumber}\n`;
         }
-        s += '70\n0\n';
+        s += "70\n0\n";
         if (this.lineTypeName) {
             s += `6\n${this.lineTypeName}\n`;
         }
@@ -446,31 +498,28 @@ class Layer extends DatabaseObject
             s += `290\n0\n`;
         }
         /* Hard-pointer handle to PlotStyleName object; seems mandatory, but any value seems OK,
-         * including 0.
-         */
+            * including 0.
+            */
         s += "390\n1\n";
         return s;
     }
 
-    setTrueColor(color)
-    {
+    setTrueColor(color) {
         this.trueColor = color;
     }
 
-    addShape(shape)
-    {
+    addShape(shape) {
         this.shapes.push(shape);
         shape.layer = this;
     }
 
-    getShapes()
-    {
+    getShapes() {
         return this.shapes;
     }
 }
 
 module.exports = Layer;
-},{"./DatabaseObject":7}],13:[function(require,module,exports){
+},{"./BaseTableRecord":4}],15:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -497,7 +546,7 @@ class Line extends BaseEntity
 }
 
 module.exports = Line;
-},{"./BaseEntity":3}],14:[function(require,module,exports){
+},{"./BaseEntity":3}],16:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -526,7 +575,7 @@ class Line3d extends BaseEntity
 }
 
 module.exports = Line3d;
-},{"./BaseEntity":3}],15:[function(require,module,exports){
+},{"./BaseEntity":3}],17:[function(require,module,exports){
 const DatabaseObject = require('./DatabaseObject')
 
 
@@ -581,7 +630,7 @@ class LineType extends DatabaseObject
 }
 
 module.exports = LineType;
-},{"./DatabaseObject":7}],16:[function(require,module,exports){
+},{"./DatabaseObject":9}],18:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -605,7 +654,7 @@ class Point extends BaseEntity
 }
 
 module.exports = Point;
-},{"./BaseEntity":3}],17:[function(require,module,exports){
+},{"./BaseEntity":3}],19:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -654,7 +703,7 @@ class Polyline extends BaseEntity
 }
 
 module.exports = Polyline;
-},{"./BaseEntity":3}],18:[function(require,module,exports){
+},{"./BaseEntity":3}],20:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -698,7 +747,7 @@ class Polyline3d extends BaseEntity
 }
 
 module.exports = Polyline3d;
-},{"./BaseEntity":3}],19:[function(require,module,exports){
+},{"./BaseEntity":3}],21:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -809,7 +858,7 @@ class Spline extends BaseEntity
 
 module.exports = Spline
 
-},{"./BaseEntity":3}],20:[function(require,module,exports){
+},{"./BaseEntity":3}],22:[function(require,module,exports){
 const DatabaseObject = require('./DatabaseObject')
 
 
@@ -839,7 +888,7 @@ class Table extends DatabaseObject {
 }
 
 module.exports = Table
-},{"./DatabaseObject":7}],21:[function(require,module,exports){
+},{"./DatabaseObject":9}],23:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -893,7 +942,7 @@ class Text extends BaseEntity
 }
 
 module.exports = Text;
-},{"./BaseEntity":3}],22:[function(require,module,exports){
+},{"./BaseEntity":3}],24:[function(require,module,exports){
 const DatabaseObject = require('./DatabaseObject')
 
 
@@ -923,7 +972,7 @@ class TextStyle extends DatabaseObject {
 
 module.exports = TextStyle
 
-},{"./DatabaseObject":7}],23:[function(require,module,exports){
+},{"./DatabaseObject":9}],25:[function(require,module,exports){
 const DatabaseObject = require('./DatabaseObject')
 
 
@@ -948,33 +997,32 @@ class Viewport extends DatabaseObject {
 }
 
 module.exports = Viewport
-},{"./DatabaseObject":7}],"Drawing":[function(require,module,exports){
-const LineType = require('./LineType')
-const Layer = require('./Layer')
-const Table = require('./Table')
-const DimStyleTable = require('./DimStyleTable')
-const TextStyle = require('./TextStyle')
-const Viewport = require('./Viewport')
-const AppId = require('./AppId')
-const Block = require('./Block')
-const BlockRecord = require('./BlockRecord')
-const Dictionary = require('./Dictionary')
-const Line = require('./Line')
-const Line3d = require('./Line3d')
-const Arc = require('./Arc')
-const Circle = require('./Circle')
-const Text = require('./Text')
-const Polyline = require('./Polyline')
-const Polyline3d = require('./Polyline3d')
-const Face = require('./Face')
-const Point = require('./Point')
-const Spline = require('./Spline')
-const Ellipse = require('./Ellipse')
+},{"./DatabaseObject":9}],"Drawing":[function(require,module,exports){
+const Block = require("./Block");
+const BlockRecord = require("./BlockRecord");
+const BlockReference = require("./BlockReference");
+const LineType = require("./LineType");
+const Layer = require("./Layer");
+const Table = require("./Table");
+const DimStyleTable = require("./DimStyleTable");
+const TextStyle = require("./TextStyle");
+const Viewport = require("./Viewport");
+const AppId = require("./AppId");
+const Dictionary = require("./Dictionary");
+const Line = require("./Line");
+const Line3d = require("./Line3d");
+const Arc = require("./Arc");
+const Circle = require("./Circle");
+const Text = require("./Text");
+const Polyline = require("./Polyline");
+const Polyline3d = require("./Polyline3d");
+const Face = require("./Face");
+const Point = require("./Point");
+const Spline = require("./Spline");
+const Ellipse = require("./Ellipse");
 
-class Drawing
-{
-    constructor()
-    {
+class Drawing {
+    constructor() {
         this.shapes = [];
         this.layers = {};
         this.activeLayer = null;
@@ -985,98 +1033,110 @@ class Drawing
         this.blocks = {};
         this.handleCount = 0;
 
-        this.ltypeTableHandle = this._generateHandle()
-        this.layerTableHandle = this._generateHandle()
-        this.blockRecordTableHandle = this._generateHandle()
+        this.ltypeTableHandle = this._generateHandle();
+        this.layerTableHandle = this._generateHandle();
+        this.blockRecordTableHandle = this._generateHandle();
 
-        this.dictionary = new Dictionary()
-        this._assignHandle(this.dictionary)
+        this.dictionary = new Dictionary();
+        this._assignHandle(this.dictionary);
 
-        this.setUnits('Unitless')
+        this.setUnits("Unitless");
 
         for (const lineType of Drawing.LINE_TYPES) {
-            this.addLineType(lineType.name, lineType.description, lineType.elements)
+            this.addLineType(lineType.name, lineType.description, lineType.elements);
         }
 
         for (const layer of Drawing.LAYERS) {
-            this.addLayer(layer.name, layer.colorNumber, layer.lineTypeName)
+            this.addLayer(layer.name, layer.colorNumber, layer.lineTypeName);
         }
 
-        this.setActiveLayer('0')
+        this.setActiveLayer("0");
     }
-
 
     /**
      * @param {string} name
      * @param {string} description
      * @param {array} elements - if elem > 0 it is a line, if elem < 0 it is gap, if elem == 0.0 it is a
      */
-    addLineType(name, description, elements)
-    {
-        this.lineTypes[name] = this._assignHandle(new LineType(name, description, elements))
+    addLineType(name, description, elements) {
+        this.lineTypes[name] = this._assignHandle(
+            new LineType(name, description, elements)
+        );
         return this;
     }
 
-    addLayer(name, colorNumber, lineTypeName)
-    {
-        this.layers[name] = this._assignHandle(new Layer(name, colorNumber, lineTypeName))
+    addLayer(name, colorNumber, lineTypeName) {
+        this.layers[name] = this._assignHandle(
+            new Layer(name, colorNumber, lineTypeName)
+        );
         return this;
     }
 
-    setActiveLayer(name)
-    {
+    setActiveLayer(name) {
         this.activeLayer = this.layers[name];
         return this;
     }
 
     addTable(name) {
-        const table = new Table(name)
-        this._assignHandle(table)
-        this.tables[name] = table
-        return table
+        const table = new Table(name);
+        this._assignHandle(table);
+        this.tables[name] = table;
+        return table;
     }
 
     addBlock(name) {
-        const block = new Block(name)
-        this._assignHandle(block)
-        block.setEndHandle(this._generateHandle())
-        this.blocks[name] = block
+        const block = new Block(name);
+        this._assignHandle(block);
+        block.setEndHandle(this._generateHandle());
+
+        const record = new BlockRecord(name);
+        this._assignHandle(record);
+        block.setOwner(record);
+
+        const reference = new BlockReference(name);
+        this._assignHandle(reference);
+        reference.setOwner(record);
+
+        this.activeLayer && this.activeLayer.addShape(block);
+        this.activeLayer && this.activeLayer.addShape(reference);
+
+        block.reference = reference;
+        block.record = record;
+        this.blocks[name] = block;
+
         this.activeBlock = block;
-        return block
+        return block;
     }
 
     drawItem(shape) {
-        this._assignHandle(shape)
+        this._assignHandle(shape);
 
-        this.activeLayer && this.activeLayer.addShape(shape)
-        this.activeBlock && this.activeBlock.addShape(shape)
+        this.activeLayer && this.activeLayer.addShape(shape);
+        this.activeBlock && this.activeBlock.addShape(shape);
 
-        this.shapes.push(shape)
+        this.shapes.push(shape);
 
         return shape;
     }
 
-    drawLine(x1, y1, x2, y2, lineTypeName)
-    {
-        let shape = new Line(x1, y1, x2, y2)
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+    drawLine(x1, y1, x2, y2, lineTypeName) {
+        let shape = new Line(x1, y1, x2, y2);
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
         return this;
     }
 
-    drawLine3d(x1, y1, z1, x2, y2, z2, lineTypeName)
-    {
-        let shape = new Line3d(x1, y1, z1, x2, y2, z2)
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+    drawLine3d(x1, y1, z1, x2, y2, z2, lineTypeName) {
+        let shape = new Line3d(x1, y1, z1, x2, y2, z2);
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
         return this;
     }
 
-    drawPoint(x, y, lineTypeName)
-    {
-        let shape = new Point(x, y)
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+    drawPoint(x, y, lineTypeName) {
+        let shape = new Point(x, y);
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
         return this;
     }
 
@@ -1086,15 +1146,21 @@ class Drawing
         cornerBulge = cornerBulge || 0;
         let shape = null;
         if (!cornerLength) {
-            shape = new Polyline([
+            shape = new Polyline(
+            [
                 [x1, y1],
                 [x1, y1 + h],
                 [x1 + w, y1 + h],
-                [x1 + w, y1]
-            ], true, 0, 0)
+                [x1 + w, y1],
+            ],
+            true,
+            0,
+            0
+            );
         } else {
-            shape = new Polyline([
-                [x1 + w - cornerLength, y1, cornerBulge],  // 1
+            shape = new Polyline(
+            [
+                [x1 + w - cornerLength, y1, cornerBulge], // 1
                 [x1 + w, y1 + cornerLength], // 2
                 [x1 + w, y1 + h - cornerLength, cornerBulge], // 3
                 [x1 + w - cornerLength, y1 + h], // 4
@@ -1102,11 +1168,15 @@ class Drawing
                 [x1, y1 + h - cornerLength], // 6
                 [x1, y1 + cornerLength, cornerBulge], // 7
                 [x1 + cornerLength, y1], // 8
-            ], true, 0 , 0)
+            ],
+            true,
+            0,
+            0
+            );
         }
 
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
         return this;
     }
 
@@ -1118,11 +1188,10 @@ class Drawing
      * @param {number} endAngle - degree
      * @param {[string]} lineTypeName - the name of the lineType
      */
-    drawArc(x1, y1, r, startAngle, endAngle, lineTypeName)
-    {
-        let shape = new Arc(x1, y1, r, startAngle, endAngle)
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+    drawArc(x1, y1, r, startAngle, endAngle, lineTypeName) {
+        let shape = new Arc(x1, y1, r, startAngle, endAngle);
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
         return this;
     }
 
@@ -1132,11 +1201,10 @@ class Drawing
      * @param {number} r - radius
      * @param {[string]} lineTypeName - the name of the lineType
      */
-    drawCircle(x1, y1, r, lineTypeName)
-    {
-        let shape = new Circle(x1, y1, r)
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+    drawCircle(x1, y1, r, lineTypeName) {
+        let shape = new Circle(x1, y1, r);
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
         return this;
     }
 
@@ -1150,57 +1218,75 @@ class Drawing
      * @param {string} [verticalAlignment="baseline"] baseline | bottom | middle | top
      * @param {[string]} lineTypeName - the name of the lineType
      */
-    drawText(x1, y1, height, rotation, value, horizontalAlignment = 'left',
-             verticalAlignment = 'baseline', lineTypeName)
-    {
-        let shape = new Text(x1, y1, height, rotation, value, horizontalAlignment, verticalAlignment)
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+    drawText(
+        x1,
+        y1,
+        height,
+        rotation,
+        value,
+        horizontalAlignment = "left",
+        verticalAlignment = "baseline",
+        lineTypeName
+    ) {
+        let shape = new Text(
+            x1,
+            y1,
+            height,
+            rotation,
+            value,
+            horizontalAlignment,
+            verticalAlignment
+        );
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
 
         return this;
     }
 
     /**
-     * @param {array} points - Array of points like [ [x1, y1], [x2, y2]... ] 
+     * @param {array} points - Array of points like [ [x1, y1], [x2, y2]... ]
      * @param {boolean} closed - Closed polyline flag
      * @param {number} startWidth - Default start width
      * @param {number} endWidth - Default end width
      * @param {[string]} lineTypeName - the name of the lineType
      */
-    drawPolyline(points, closed = false, startWidth = 0, endWidth = 0, lineTypeName)
-    {
-        let shape = new Polyline(points, closed, startWidth, endWidth)
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+    drawPolyline(
+        points,
+        closed = false,
+        startWidth = 0,
+        endWidth = 0,
+        lineTypeName
+    ) {
+        let shape = new Polyline(points, closed, startWidth, endWidth);
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
         return this;
     }
 
     /**
-     * @param {array} points - Array of points like [ [x1, y1, z1], [x2, y2, z1]... ] 
+     * @param {array} points - Array of points like [ [x1, y1, z1], [x2, y2, z1]... ]
      * @param {[string]} lineTypeName - the name of the lineType
      */
-    drawPolyline3d(points, lineTypeName)
-    {
-        points.forEach(point => {
-            if (point.length !== 3){
-                throw "Require 3D coordinate"
+    drawPolyline3d(points, lineTypeName) {
+        points.forEach((point) => {
+            if (point.length !== 3) {
+            throw "Require 3D coordinate";
             }
-        })
-        let shape = new Polyline3d(points)
-        shape.assignVertexHandles(this._generateHandle.bind(this))
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+        });
+        let shape = new Polyline3d(points);
+        shape.assignVertexHandles(this._generateHandle.bind(this));
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
 
         return this;
     }
 
     /**
-     * 
+     *
      * @param {number} trueColor - Integer representing the true color, can be passed as an hexadecimal value of the form 0xRRGGBB
      */
-    setTrueColor(trueColor)
-    {
-        this.activeLayer.setTrueColor(trueColor)
+    setTrueColor(trueColor) {
+        this.activeLayer.setTrueColor(trueColor);
         return this;
     }
 
@@ -1213,31 +1299,53 @@ class Drawing
      * @param {[Array]} fitPoints - Array of fit points like [ [x1, y1], [x2, y2]... ]
      * @param {[string]} lineTypeName - the name of the lineType
      */
-    drawSpline(controlPoints, degree = 3, knots = null, weights = null, fitPoints = [], lineTypeName)
-    {
-        let shape =  new Spline(controlPoints, degree, knots, weights, fitPoints)
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+    drawSpline(
+        controlPoints,
+        degree = 3,
+        knots = null,
+        weights = null,
+        fitPoints = [],
+        lineTypeName
+    ) {
+        let shape = new Spline(controlPoints, degree, knots, weights, fitPoints);
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
 
         return this;
     }
 
     /**
      * Draw an ellipse.
-    * @param {number} x1 - Center x
-    * @param {number} y1 - Center y
-    * @param {number} majorAxisX - Endpoint x of major axis, relative to center
-    * @param {number} majorAxisY - Endpoint y of major axis, relative to center
-    * @param {number} axisRatio - Ratio of minor axis to major axis
-    * @param {number} startAngle - Start angle
-    * @param {number} endAngle - End angle
+     * @param {number} x1 - Center x
+     * @param {number} y1 - Center y
+     * @param {number} majorAxisX - Endpoint x of major axis, relative to center
+     * @param {number} majorAxisY - Endpoint y of major axis, relative to center
+     * @param {number} axisRatio - Ratio of minor axis to major axis
+     * @param {number} startAngle - Start angle
+     * @param {number} endAngle - End angle
      * @param {[string]} lineTypeName - the name of the lineType
-    */
-    drawEllipse(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle = 0, endAngle = 2 * Math.PI, lineTypeName)
-    {
-        let shape = new Ellipse(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle, endAngle)
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
+     */
+    drawEllipse(
+        x1,
+        y1,
+        majorAxisX,
+        majorAxisY,
+        axisRatio,
+        startAngle = 0,
+        endAngle = 2 * Math.PI,
+        lineTypeName
+    ) {
+        let shape = new Ellipse(
+            x1,
+            y1,
+            majorAxisX,
+            majorAxisY,
+            axisRatio,
+            startAngle,
+            endAngle
+        );
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
 
         return this;
     }
@@ -1257,56 +1365,51 @@ class Drawing
      * @param {number} z4 - z
      * @param {[string]} lineTypeName - the name of the lineType
      */
-    drawFace(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, lineTypeName)
-    {
-        let shape = new Face(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4)
-        shape.setLineType(lineTypeName)
-        this.drawItem(shape)
-        
+    drawFace(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, lineTypeName) {
+        let shape = new Face(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4);
+        shape.setLineType(lineTypeName);
+        this.drawItem(shape);
+
         return this;
     }
 
-    _generateHandle()
-    {
-        return ++this.handleCount
+    _generateHandle() {
+        return ++this.handleCount;
     }
 
-    _assignHandle(entity)
-    {
-        entity.handle = this._generateHandle()
-        return entity
+    _assignHandle(entity) {
+        entity.handle = this._generateHandle();
+        return entity;
     }
 
-    _getDxfLtypeTable()
-    {
-        const t = new Table("LTYPE")
-        t.handle = this.ltypeTableHandle
-        Object.values(this.lineTypes).forEach(v => t.add(v))
-        return t.toDxfString()
+    _getDxfLtypeTable() {
+        const t = new Table("LTYPE");
+        t.handle = this.ltypeTableHandle;
+        Object.values(this.lineTypes).forEach((v) => t.add(v));
+        return t.toDxfString();
     }
 
-    _getDxfLayerTable()
-    {
-        const t = new Table("LAYER")
-        t.handle = this.layerTableHandle
-        Object.values(this.layers).forEach(v => t.add(v))
-        return t.toDxfString()
+    _getDxfLayerTable() {
+        const t = new Table("LAYER");
+        t.handle = this.layerTableHandle;
+        Object.values(this.layers).forEach((v) => t.add(v));
+        return t.toDxfString();
     }
 
-     /**
-      * @see https://www.autodesk.com/techpubs/autocad/acadr14/dxf/header_section_al_u05_c.htm
-      * @see https://www.autodesk.com/techpubs/autocad/acad2000/dxf/header_section_group_codes_dxf_02.htm
-      * 
-      * @param {string} variable 
-      * @param {array} values Array of "two elements arrays". [  [value1_GroupCode, value1_value], [value2_GroupCode, value2_value]  ]
-      */
+    /**
+     * @see https://www.autodesk.com/techpubs/autocad/acadr14/dxf/header_section_al_u05_c.htm
+     * @see https://www.autodesk.com/techpubs/autocad/acad2000/dxf/header_section_group_codes_dxf_02.htm
+     *
+     * @param {string} variable
+     * @param {array} values Array of "two elements arrays". [  [value1_GroupCode, value1_value], [value2_GroupCode, value2_value]  ]
+     */
     header(variable, values) {
         this.headers[variable] = values;
         return this;
     }
 
-    _getHeader(variable, values){
-        let s = '9\n$'+ variable +'\n';
+    _getHeader(variable, values) {
+        let s = "9\n$" + variable + "\n";
 
         for (let value of values) {
             s += `${value[0]}\n${value[1]}\n`;
@@ -1316,12 +1419,15 @@ class Drawing
     }
 
     /**
-     * 
+     *
      * @param {string} unit see Drawing.UNITS
      */
     setUnits(unit) {
-        let value = (typeof Drawing.UNITS[unit] != 'undefined') ? Drawing.UNITS[unit]:Drawing.UNITS['Unitless'];
-        this.header('INSUNITS', [[70, Drawing.UNITS[unit]]])
+        let value =
+            typeof Drawing.UNITS[unit] != "undefined"
+            ? Drawing.UNITS[unit]
+            : Drawing.UNITS["Unitless"];
+        this.header("INSUNITS", [[70, Drawing.UNITS[unit]]]);
         return this;
     }
 
@@ -1332,199 +1438,190 @@ class Drawing
     generateAutocadExtras() {
         if (!this.headers["ACADVER"]) {
             /* AutoCAD 2007 version. */
-            this.header("ACADVER", [[1, "AC1021"]])
+            this.header("ACADVER", [[1, "AC1021"]]);
         }
 
         if (!this.lineTypes["ByBlock"]) {
-            this.addLineType("ByBlock", "", [])
+            this.addLineType("ByBlock", "", []);
         }
         if (!this.lineTypes["ByLayer"]) {
-            this.addLineType("ByLayer", "", [])
+            this.addLineType("ByLayer", "", []);
         }
 
-        let vpTable = this.tables["VPORT"]
+        let vpTable = this.tables["VPORT"];
         if (!vpTable) {
-            vpTable = this.addTable("VPORT")
+            vpTable = this.addTable("VPORT");
         }
-        let styleTable = this.tables["STYLE"]
+        let styleTable = this.tables["STYLE"];
         if (!styleTable) {
-            styleTable = this.addTable("STYLE")
+            styleTable = this.addTable("STYLE");
         }
         if (!this.tables["VIEW"]) {
-            this.addTable("VIEW")
+            this.addTable("VIEW");
         }
         if (!this.tables["UCS"]) {
-            this.addTable("UCS")
+            this.addTable("UCS");
         }
-        let appIdTable = this.tables["APPID"]
+        let appIdTable = this.tables["APPID"];
         if (!appIdTable) {
-            appIdTable = this.addTable("APPID")
+            appIdTable = this.addTable("APPID");
         }
         if (!this.tables["DIMSTYLE"]) {
-            const t = new DimStyleTable("DIMSTYLE")
-            this._assignHandle(t)
-            this.tables["DIMSTYLE"] = t
+            const t = new DimStyleTable("DIMSTYLE");
+            this._assignHandle(t);
+            this.tables["DIMSTYLE"] = t;
         }
 
-        vpTable.add(this._assignHandle(new Viewport("*ACTIVE", 1000)))
+        vpTable.add(this._assignHandle(new Viewport("*ACTIVE", 1000)));
 
         /* Non-default text alignment is not applied without this entry. */
-        styleTable.add(this._assignHandle(new TextStyle("standard")))
+        styleTable.add(this._assignHandle(new TextStyle("standard")));
 
-        appIdTable.add(this._assignHandle(new AppId("ACAD")))
+        appIdTable.add(this._assignHandle(new AppId("ACAD")));
 
-        this.addBlock("*Model_Space")
-        this.addBlock("*Paper_Space")
+        this.modelSpace = this.addBlock("*Model_Space");
+        this.paperSpace = this.addBlock("*Paper_Space");
 
-        const d = new Dictionary()
-        this._assignHandle(d)
-        this.dictionary.addChildDictionary("ACAD_GROUP", d)
+        const d = new Dictionary();
+        this._assignHandle(d);
+        this.dictionary.addChildDictionary("ACAD_GROUP", d);
     }
 
-    toDxfString()
-    {
-        let s = '';
+    toDxfString() {
+        let s = "";
 
         //start section
-        s += '0\nSECTION\n';
+        s += "0\nSECTION\n";
         //name section as HEADER section
-        s += '2\nHEADER\n';
-
-        s += this._getHeader("HANDSEED", [[5, (this._generateHandle()).toString(16)]])
+        s += "2\nHEADER\n";
+        s += this._getHeader("HANDSEED", [
+            [5, this._generateHandle().toString(16)],
+        ]);
         for (let header in this.headers) {
-            s += this._getHeader(header, this.headers[header])
+            s += this._getHeader(header, this.headers[header]);
         }
 
         //end section
-        s += '0\nENDSEC\n';
-
+        s += "0\nENDSEC\n";
 
         //start section
-        s += '0\nSECTION\n';
+        s += "0\nSECTION\n";
         // Empty CLASSES section for compatibility
-        s += '2\nCLASSES\n';
+        s += "2\nCLASSES\n";
         //end section
-        s += '0\nENDSEC\n';
-
+        s += "0\nENDSEC\n";
 
         //start section
-        s += '0\nSECTION\n';
+        s += "0\nSECTION\n";
         //name section as TABLES section
-        s += '2\nTABLES\n';
+        s += "2\nTABLES\n";
 
-        s += this._getDxfLtypeTable()
-        s += this._getDxfLayerTable()
+        s += this._getDxfLtypeTable();
+        s += this._getDxfLayerTable();
 
         for (const table of Object.values(this.tables)) {
-            s += table.toDxfString()
+            s += table.toDxfString();
         }
 
-        let blockRecordTable = new Table("BLOCK_RECORD")
-        blockRecordTable.handle = this.blockRecordTableHandle
-        Object.values(this.blocks).forEach(b => {
-            const rec = new BlockRecord(b.name)
-            this._assignHandle(rec)
-            //b.ownerHandle = rec.handle
-            b.setOwner(rec)
-            blockRecordTable.add(rec)
-        })
-        s += blockRecordTable.toDxfString()
+        let blockRecordTable = new Table("BLOCK_RECORD");
+        blockRecordTable.handle = this.blockRecordTableHandle;
+        Object.values(this.blocks).forEach((b) => {
+            blockRecordTable.add(b.record);
+            b.record.setOwner(blockRecordTable);
+        });
+        s += blockRecordTable.toDxfString();
 
         //end section
-        s += '0\nENDSEC\n';
-
+        s += "0\nENDSEC\n";
 
         //start section
-        s += '0\nSECTION\n';
+        s += "0\nSECTION\n";
         //name section as BLOCKS section
-        s += '2\nBLOCKS\n';
+        s += "2\nBLOCKS\n";
 
-        for (const block of  Object.values(this.blocks)) {
-            s += block.toDxfString()
+        for (const block of Object.values(this.blocks)) {
+            s += block.toDxfString();
         }
 
         //end section
-        s += '0\nENDSEC\n';
-
+        s += "0\nENDSEC\n";
 
         //ENTITES section
-        s += '0\nSECTION\n';
-        s += '2\nENTITIES\n';
-
+        s += "0\nSECTION\n";
+        s += "2\nENTITIES\n";
+        for (const block of Object.values(this.blocks)) {
+            s += block.reference.toDxfString();
+        }
         for (let i = 0; i < this.shapes.length; ++i) {
-            s += this.shapes[i].toDxfString()
+            const shape = this.shapes[i];
+            if (!shape.block) {
+            s += shape.toDxfString();
+            }
         }
 
-
-        s += '0\nENDSEC\n';
-
+        s += "0\nENDSEC\n";
 
         //OBJECTS section
-        s += '0\nSECTION\n';
-        s += '2\nOBJECTS\n';
-        s += this.dictionary.toDxfString()
-        s += '0\nENDSEC\n';
-
+        s += "0\nSECTION\n";
+        s += "2\nOBJECTS\n";
+        s += this.dictionary.toDxfString();
+        s += "0\nENDSEC\n";
 
         //close file
-        s += '0\nEOF\n';
+        s += "0\nEOF\n";
 
         return s;
     }
-
 }
 
 //AutoCAD Color Index (ACI)
 //http://sub-atomic.com/~moses/acadcolors.html
-Drawing.ACI =
-{
-    LAYER : 0,
-    RED : 1,
-    YELLOW : 2,
-    GREEN : 3,
-    CYAN : 4,
-    BLUE : 5,
-    MAGENTA : 6,
-    WHITE : 7
-}
+Drawing.ACI = {
+    LAYER: 0,
+    RED: 1,
+    YELLOW: 2,
+    GREEN: 3,
+    CYAN: 4,
+    BLUE: 5,
+    MAGENTA: 6,
+    WHITE: 7,
+};
 
-Drawing.LINE_TYPES =
-[
-    {name: 'CONTINUOUS', description: '______', elements: []},
-    {name: 'DASHED',    description: '_ _ _ ', elements: [5.0, -5.0]},
-    {name: 'DOTTED',    description: '. . . ', elements: [0.0, -5.0]}
-]
+Drawing.LINE_TYPES = [
+    { name: "CONTINUOUS", description: "______", elements: [] },
+    { name: "DASHED", description: "_ _ _ ", elements: [5.0, -5.0] },
+    { name: "DOTTED", description: ". . . ", elements: [0.0, -5.0] },
+];
 
-Drawing.LAYERS =
-[
-    {name: '0',  colorNumber: Drawing.ACI.WHITE, lineTypeName: 'CONTINUOUS'}
-]
+Drawing.LAYERS = [
+    { name: "0", colorNumber: Drawing.ACI.WHITE, lineTypeName: "CONTINUOUS" },
+];
 
 //https://www.autodesk.com/techpubs/autocad/acad2000/dxf/header_section_group_codes_dxf_02.htm
 Drawing.UNITS = {
-    'Unitless':0,
-    'Inches':1,
-    'Feet':2,
-    'Miles':3,
-    'Millimeters':4,
-    'Centimeters':5,
-    'Meters':6,
-    'Kilometers':7,
-    'Microinches':8,
-    'Mils':9,
-    'Yards':10,
-    'Angstroms':11,
-    'Nanometers':12,
-    'Microns':13,
-    'Decimeters':14,
-    'Decameters':15,
-    'Hectometers':16,
-    'Gigameters':17,
-    'Astronomical units':18,
-    'Light years':19,
-    'Parsecs':20
-}
+    Unitless: 0,
+    Inches: 1,
+    Feet: 2,
+    Miles: 3,
+    Millimeters: 4,
+    Centimeters: 5,
+    Meters: 6,
+    Kilometers: 7,
+    Microinches: 8,
+    Mils: 9,
+    Yards: 10,
+    Angstroms: 11,
+    Nanometers: 12,
+    Microns: 13,
+    Decimeters: 14,
+    Decameters: 15,
+    Hectometers: 16,
+    Gigameters: 17,
+    "Astronomical units": 18,
+    "Light years": 19,
+    Parsecs: 20,
+};
 
 module.exports = Drawing;
 
-},{"./AppId":1,"./Arc":2,"./Block":4,"./BlockRecord":5,"./Circle":6,"./Dictionary":8,"./DimStyleTable":9,"./Ellipse":10,"./Face":11,"./Layer":12,"./Line":13,"./Line3d":14,"./LineType":15,"./Point":16,"./Polyline":17,"./Polyline3d":18,"./Spline":19,"./Table":20,"./Text":21,"./TextStyle":22,"./Viewport":23}]},{},[]);
+},{"./AppId":1,"./Arc":2,"./Block":5,"./BlockRecord":6,"./BlockReference":7,"./Circle":8,"./Dictionary":10,"./DimStyleTable":11,"./Ellipse":12,"./Face":13,"./Layer":14,"./Line":15,"./Line3d":16,"./LineType":17,"./Point":18,"./Polyline":19,"./Polyline3d":20,"./Spline":21,"./Table":22,"./Text":23,"./TextStyle":24,"./Viewport":25}]},{},[]);
