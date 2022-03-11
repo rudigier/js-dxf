@@ -1,7 +1,7 @@
 const DatabaseObject = require("./DatabaseObject");
 
 const EntityTranslations = {
-  ARC: "AcDbArc",
+  ARC: "AcDbCircle",
   CIRCLE: "AcDbCircle",
   "3DFACE": "AcDbFace",
   ELLIPSE: "AcDbEllipse",
