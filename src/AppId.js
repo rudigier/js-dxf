@@ -1,21 +1,17 @@
-const DatabaseObject = require('./DatabaseObject');
+const BaseTableRecord = require("./BaseTableRecord");
 
+class AppId extends BaseTableRecord {
+  constructor(name) {
+    super("APPID", name);
+  }
 
-class AppId extends DatabaseObject {
-    constructor(name) {
-        super(["AcDbSymbolTableRecord", "AcDbRegAppTableRecord"])
-        this.name = name
-    }
+  toDxfString() {
+    let s = super.toDxfString();
 
-    toDxfString()
-    {
-        let s = "0\nAPPID\n"
-        s += super.toDxfString()
-        s += `2\n${this.name}\n`
-        /* No flags set */
-        s += "70\n0\n"
-        return s
-    }
+    /* No flags set */
+    s += "70\n0\n";
+    return s;
+  }
 }
 
 module.exports = AppId

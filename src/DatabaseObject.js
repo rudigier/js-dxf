@@ -34,8 +34,14 @@ class DatabaseObject {
         if (this.owner && this.owner.handle) {
             s += `330\n${this.owner.handle.toString(16)}\n`
         }
-        for (const marker of this.subclassMarkers) {
-            s += `100\n${marker}\n`
+        
+        s += `100\n${this.subclassMarkers[0]}\n`;
+        if (this.layer?.name) {
+            s += `8\n${this.layer.name}\n`;
+        }
+        
+        for (const marker of this.subclassMarkers.slice(1)) {
+          s += `100\n${marker}\n`;
         }
         return s
     }

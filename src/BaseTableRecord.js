@@ -1,10 +1,13 @@
 const DatabaseObject = require('./DatabaseObject')
 
 const EntityTranslations = {
-    'LAYER': 'AcDbLayerTableRecord',
-    'BLOCK_RECORD': 'AcDbBlockTableRecord'
-}
-
+  APPID: "AcDbRegAppTableRecord",
+  LAYER: "AcDbLayerTableRecord",
+  LTYPE: "AcDbLinetypeTableRecord",
+  BLOCK_RECORD: "AcDbBlockTableRecord",
+  STYLE: "AcDbTextStyleTableRecord",
+  VPORT: "AcDbViewportTableRecord",
+};
 
 class BaseTableRecord extends DatabaseObject {
     constructor(type, name) {

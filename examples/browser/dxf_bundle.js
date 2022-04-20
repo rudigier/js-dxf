@@ -1,26 +1,22 @@
 require=(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-const DatabaseObject = require('./DatabaseObject');
+const BaseTableRecord = require("./BaseTableRecord");
 
+class AppId extends BaseTableRecord {
+  constructor(name) {
+    super("APPID", name);
+  }
 
-class AppId extends DatabaseObject {
-    constructor(name) {
-        super(["AcDbSymbolTableRecord", "AcDbRegAppTableRecord"])
-        this.name = name
-    }
+  toDxfString() {
+    let s = super.toDxfString();
 
-    toDxfString()
-    {
-        let s = "0\nAPPID\n"
-        s += super.toDxfString()
-        s += `2\n${this.name}\n`
-        /* No flags set */
-        s += "70\n0\n"
-        return s
-    }
+    /* No flags set */
+    s += "70\n0\n";
+    return s;
+  }
 }
 
 module.exports = AppId
-},{"./DatabaseObject":9}],2:[function(require,module,exports){
+},{"./BaseTableRecord":4}],2:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -95,9 +91,7 @@ class BaseEntity extends DatabaseObject {
   toDxfString() {
     let s = `0\n${this.type}\n`;
     s += super.toDxfString();
-    if (this.layer?.name) {
-      s += `8\n${this.layer.name}\n`;
-    }
+
     if (this.lineTypeName) {
       s += `6\n${this.lineTypeName}\n`;
     }
@@ -112,10 +106,13 @@ module.exports = BaseEntity;
 const DatabaseObject = require('./DatabaseObject')
 
 const EntityTranslations = {
-    'LAYER': 'AcDbLayerTableRecord',
-    'BLOCK_RECORD': 'AcDbBlockTableRecord'
-}
-
+  APPID: "AcDbRegAppTableRecord",
+  LAYER: "AcDbLayerTableRecord",
+  LTYPE: "AcDbLinetypeTableRecord",
+  BLOCK_RECORD: "AcDbBlockTableRecord",
+  STYLE: "AcDbTextStyleTableRecord",
+  VPORT: "AcDbViewportTableRecord",
+};
 
 class BaseTableRecord extends DatabaseObject {
     constructor(type, name) {
@@ -317,8 +314,14 @@ class DatabaseObject {
         if (this.owner && this.owner.handle) {
             s += `330\n${this.owner.handle.toString(16)}\n`
         }
-        for (const marker of this.subclassMarkers) {
-            s += `100\n${marker}\n`
+        
+        s += `100\n${this.subclassMarkers[0]}\n`;
+        if (this.layer?.name) {
+            s += `8\n${this.layer.name}\n`;
+        }
+        
+        for (const marker of this.subclassMarkers.slice(1)) {
+          s += `100\n${marker}\n`;
         }
         return s
     }
@@ -578,61 +581,54 @@ class Line3d extends BaseEntity
 
 module.exports = Line3d;
 },{"./BaseEntity":3}],17:[function(require,module,exports){
-const DatabaseObject = require('./DatabaseObject')
+const BaseTableRecord = require("./BaseTableRecord");
 
+class LineType extends BaseTableRecord {
+  /**
+   * @param {string} name
+   * @param {string} description
+   * @param {array} elements - if elem > 0 it is a line, if elem < 0 it is gap, if elem == 0.0 it is a
+   */
+  constructor(name, description, elements) {
+    super("LTYPE", name);
 
-class LineType extends DatabaseObject
-{
-    /**
-     * @param {string} name
-     * @param {string} description
-     * @param {array} elements - if elem > 0 it is a line, if elem < 0 it is gap, if elem == 0.0 it is a 
-     */
-    constructor(name, description, elements)
-    {
-        super(["AcDbSymbolTableRecord", "AcDbLinetypeTableRecord"])
-        this.name = name;
-        this.description = description;
-        this.elements = elements;
+    this.description = description;
+    this.elements = elements;
+  }
+
+  /**
+   * @link https://www.autodesk.com/techpubs/autocad/acadr14/dxf/ltype_al_u05_c.htm
+   */
+  toDxfString() {
+    let s = super.toDxfString();
+
+    s += `3\n${this.description}\n`;
+    s += "70\n0\n";
+    s += "72\n65\n";
+    s += `73\n${this.elements.length}\n`;
+    s += `40\n${this.getElementsSum()}\n`;
+    for (const element of this.elements) {
+      s += `49\n${element}\n`;
+      /* Complex linetype element type, mandatory for AutoCAD */
+      s += "74\n0\n";
     }
 
-    /**
-     * @link https://www.autodesk.com/techpubs/autocad/acadr14/dxf/ltype_al_u05_c.htm
-     */
-    toDxfString()
-    {
-        let s = '0\nLTYPE\n';
-        s += super.toDxfString()
-        s += `2\n${this.name}\n`;
-        s += `3\n${this.description}\n`;
-        s += '70\n0\n';
-        s += '72\n65\n';
-        s += `73\n${this.elements.length}\n`;
-        s += `40\n${this.getElementsSum()}\n`;
-        for (const element of this.elements)
-        {
-            s += `49\n${element}\n`;
-            /* Complex linetype element type, mandatory for AutoCAD */
-            s += '74\n0\n';
-        }
+    return s;
+  }
 
-        return s;
+  getElementsSum() {
+    let sum = 0;
+    for (let i = 0; i < this.elements.length; ++i) {
+      sum += Math.abs(this.elements[i]);
     }
 
-    getElementsSum()
-    {
-        let sum = 0;
-        for (let i = 0; i < this.elements.length; ++i)
-        {
-            sum += Math.abs(this.elements[i]);
-        }
-
-        return sum;
-    }
+    return sum;
+  }
 }
 
 module.exports = LineType;
-},{"./DatabaseObject":9}],18:[function(require,module,exports){
+
+},{"./BaseTableRecord":4}],18:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
 
@@ -945,61 +941,54 @@ class Text extends BaseEntity
 
 module.exports = Text;
 },{"./BaseEntity":3}],24:[function(require,module,exports){
-const DatabaseObject = require('./DatabaseObject')
+const BaseTableRecord = require("./BaseTableRecord");
 
+class TextStyle extends BaseTableRecord {
+  constructor(name) {
+    super("STYLE", name);
+  }
 
-class TextStyle extends DatabaseObject {
-    constructor(name) {
-        super(["AcDbSymbolTableRecord", "AcDbTextStyleTableRecord"])
-        this.name = name
-    }
-
-    toDxfString()
-    {
-        let s = "0\nSTYLE\n"
-        s += super.toDxfString()
-        s += `2\n${this.name}\n`
-        /* No flags set */
-        s += "70\n0\n"
-        s += "40\n0\n"
-        s += "41\n1\n"
-        s += "50\n0\n"
-        s += "71\n0\n"
-        s += "42\n1\n"
-        s += `3\n${this.name}\n`
-        s += "4\n\n"
-        return s
-    }
+  toDxfString() {
+    let s = super.toDxfString();
+    /* No flags set */
+    s += "70\n0\n";
+    s += "40\n0\n";
+    s += "41\n1\n";
+    s += "50\n0\n";
+    s += "71\n0\n";
+    s += "42\n1\n";
+    s += `3\n${this.name}\n`;
+    s += "4\n\n";
+    return s;
+  }
 }
 
-module.exports = TextStyle
+module.exports = TextStyle;
 
-},{"./DatabaseObject":9}],25:[function(require,module,exports){
-const DatabaseObject = require('./DatabaseObject')
+},{"./BaseTableRecord":4}],25:[function(require,module,exports){
+const BaseTableRecord = require("./BaseTableRecord");
 
+class Viewport extends BaseTableRecord {
+  constructor(name, height) {
+    super("VPORT", name);
 
-class Viewport extends DatabaseObject {
-    constructor(name, height)
-    {
-        super(["AcDbSymbolTableRecord", "AcDbViewportTableRecord"])
-        this.name = name
-        this.height = height
-    }
+    this.height = height;
+  }
 
-    toDxfString()
-    {
-        let s = "0\nVPORT\n"
-        s += super.toDxfString()
-        s += `2\n${this.name}\n`
-        s += `40\n${this.height}\n`
-        /* No flags set */
-        s += "70\n0\n"
-        return s
-    }
+  toDxfString() {
+    let s = super.toDxfString();
+
+    s += `40\n${this.height}\n`;
+    
+    /* No flags set */
+    s += "70\n0\n";
+    return s;
+  }
 }
 
-module.exports = Viewport
-},{"./DatabaseObject":9}],"Drawing":[function(require,module,exports){
+module.exports = Viewport;
+
+},{"./BaseTableRecord":4}],"Drawing":[function(require,module,exports){
 const Block = require("./Block");
 const BlockRecord = require("./BlockRecord");
 const BlockReference = require("./BlockReference");

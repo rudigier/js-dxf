@@ -1,24 +1,21 @@
-const DatabaseObject = require('./DatabaseObject')
+const BaseTableRecord = require("./BaseTableRecord");
 
+class Viewport extends BaseTableRecord {
+  constructor(name, height) {
+    super("VPORT", name);
 
-class Viewport extends DatabaseObject {
-    constructor(name, height)
-    {
-        super(["AcDbSymbolTableRecord", "AcDbViewportTableRecord"])
-        this.name = name
-        this.height = height
-    }
+    this.height = height;
+  }
 
-    toDxfString()
-    {
-        let s = "0\nVPORT\n"
-        s += super.toDxfString()
-        s += `2\n${this.name}\n`
-        s += `40\n${this.height}\n`
-        /* No flags set */
-        s += "70\n0\n"
-        return s
-    }
+  toDxfString() {
+    let s = super.toDxfString();
+
+    s += `40\n${this.height}\n`;
+    
+    /* No flags set */
+    s += "70\n0\n";
+    return s;
+  }
 }
 
-module.exports = Viewport
+module.exports = Viewport;
