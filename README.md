@@ -28,14 +28,14 @@ let d = new Drawing();
 
 d.setUnits('Decimeters');
 d.drawText(10, 0, 10, 0, 'Hello World'); // draw text in the default layer named "0"
-d.addLayer('l_green', Drawing.ACI.GREEN, 'CONTINUOUS');
+d.addLayer('l_green', Drawing.ACI.GREEN);
 d.setActiveLayer('l_green');
-d.drawText(20, -70, 10, 0, 'go green!');
+d.drawText(20, -70, 10, 0, 'go green!', 'CONTINUOUS');
 
 //or fluent
-d.addLayer('l_yellow', Drawing.ACI.YELLOW, 'DOTTED')
+d.addLayer('l_yellow', Drawing.ACI.YELLOW)
  .setActiveLayer('l_yellow')
- .drawCircle(50, -30, 25);
+ .drawCircle(50, -30, 25, 'DOTTED');
 
 fs.writeFileSync(__filename + '.dxf', d.toDxfString());
 ```

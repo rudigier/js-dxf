@@ -35,7 +35,6 @@ class BaseEntity extends DatabaseObject {
   toDxfString() {
     let s = `0\n${this.type}\n`;
     s += super.toDxfString();
-
     if (this.lineTypeName) {
       s += `6\n${this.lineTypeName}\n`;
     }

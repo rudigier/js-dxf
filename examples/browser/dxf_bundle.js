@@ -91,7 +91,6 @@ class BaseEntity extends DatabaseObject {
   toDxfString() {
     let s = `0\n${this.type}\n`;
     s += super.toDxfString();
-
     if (this.lineTypeName) {
       s += `6\n${this.lineTypeName}\n`;
     }
@@ -225,7 +224,7 @@ module.exports = BlockRecord
 },{"./BaseTableRecord":4}],7:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
-class BlockRecord extends BaseEntity {
+class BlockReference extends BaseEntity {
     constructor(name) {
         super("INSERT")
         this.name = name
@@ -246,7 +245,7 @@ class BlockRecord extends BaseEntity {
     }
 }
 
-module.exports = BlockRecord
+module.exports = BlockReference
 },{"./BaseEntity":3}],8:[function(require,module,exports){
 const BaseEntity = require('./BaseEntity')
 
@@ -475,52 +474,54 @@ module.exports = Face;
 const BaseTableRecord = require('./BaseTableRecord')
 
 class Layer extends BaseTableRecord {
-    constructor(name, colorNumber) {
-        super("LAYER", name);
-        this.colorNumber = colorNumber;
-        this.lineTypeName = null;
-        this.shapes = [];
-        this.trueColor = -1;
-    }
+	constructor(name, colorNumber, lineTypeName) {
+		super("LAYER", name);
+		this.colorNumber = colorNumber;
+		this.lineTypeName = lineTypeName;
+		this.shapes = [];
+		this.trueColor = -1;
+	}
 
-    setLineType(lineTypeName) {
-        this.lineTypeName = lineTypeName;
-    }
+	setLineType(lineTypeName) {
+		this.lineTypeName = lineTypeName;
+	}
 
-    toDxfString() {
-        let s = super.toDxfString();
 
-        if (this.trueColor !== -1) {
-            s += `420\n${this.trueColor}\n`;
-        } else {
-            s += `62\n${this.colorNumber}\n`;
-        }
-        s += "70\n0\n";
-        if (this.lineTypeName) {
-            s += `6\n${this.lineTypeName}\n`;
-        }
-        if (this.name.toLowerCase() === "defpoints") {
-            s += `290\n0\n`;
-        }
-        /* Hard-pointer handle to PlotStyleName object; seems mandatory, but any value seems OK,
-            * including 0.
-            */
-        s += "390\n1\n";
-        return s;
-    }
+	setTrueColor(color) {
+		this.trueColor = color;
+	}
 
-    setTrueColor(color) {
-        this.trueColor = color;
-    }
+	addShape(shape) {
+		this.shapes.push(shape);
+		shape.layer = this;
+	}
 
-    addShape(shape) {
-        this.shapes.push(shape);
-        shape.layer = this;
-    }
+	getShapes() {
+		return this.shapes;
+	}
 
-    getShapes() {
-        return this.shapes;
-    }
+	toDxfString() {
+		let s = super.toDxfString();
+
+		if (this.trueColor !== -1) {
+			s += `420\n${this.trueColor}\n`;
+		} else {
+			s += `62\n${this.colorNumber}\n`;
+		}
+		s += "70\n0\n";
+		if (this.lineTypeName) {
+			s += `6\n${this.lineTypeName}\n`;
+		}
+
+		if (this.name.toLowerCase() === "defpoints") {
+			s += `290\n0\n`;
+		}
+		/* Hard-pointer handle to PlotStyleName object; seems mandatory, but any value seems OK,
+		 * including 0.
+		 */
+		s += "390\n1\n";
+		return s;
+	}
 }
 
 module.exports = Layer;
@@ -686,15 +687,16 @@ class Polyline extends BaseEntity
             s += `43\n${this.startWidth}\n`;
         }
 
-        for (const p of this.points) {
-            s += `10\n${p[0]}\n20\n${p[1]}\n`;
+        this.points.forEach((point) => {
+            const [x, y, z] = point;
+            s += `10\n${x}\n20\n${y}\n`;
             if (this.startWidth !== 0 || this.endWidth !== 0) {
                 s += `40\n${this.startWidth}\n41\n${this.endWidth}\n`;
             }
-            if (p[2] !== undefined) {
-                s += `42\n${p[2]}\n`;
+            if (z !== undefined) {
+                s += `42\n${z}\n`;
             }
-        }
+        })
 
         return s;
     }
@@ -1112,21 +1114,21 @@ class Drawing {
 
     drawLine(x1, y1, x2, y2, lineTypeName) {
         let shape = new Line(x1, y1, x2, y2);
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
         return this;
     }
 
     drawLine3d(x1, y1, z1, x2, y2, z2, lineTypeName) {
         let shape = new Line3d(x1, y1, z1, x2, y2, z2);
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
         return this;
     }
 
     drawPoint(x, y, lineTypeName) {
         let shape = new Point(x, y);
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
         return this;
     }
@@ -1166,7 +1168,7 @@ class Drawing {
             );
         }
 
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
         return this;
     }
@@ -1181,7 +1183,7 @@ class Drawing {
      */
     drawArc(x1, y1, r, startAngle, endAngle, lineTypeName) {
         let shape = new Arc(x1, y1, r, startAngle, endAngle);
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
         return this;
     }
@@ -1194,7 +1196,7 @@ class Drawing {
      */
     drawCircle(x1, y1, r, lineTypeName) {
         let shape = new Circle(x1, y1, r);
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
         return this;
     }
@@ -1228,7 +1230,7 @@ class Drawing {
             horizontalAlignment,
             verticalAlignment
         );
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
 
         return this;
@@ -1249,7 +1251,7 @@ class Drawing {
         lineTypeName
     ) {
         let shape = new Polyline(points, closed, startWidth, endWidth);
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
         return this;
     }
@@ -1261,12 +1263,12 @@ class Drawing {
     drawPolyline3d(points, lineTypeName) {
         points.forEach((point) => {
             if (point.length !== 3) {
-            throw "Require 3D coordinate";
+                throw "Require 3D coordinate";
             }
         });
         let shape = new Polyline3d(points);
         shape.assignVertexHandles(this._generateHandle.bind(this));
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
 
         return this;
@@ -1299,7 +1301,7 @@ class Drawing {
         lineTypeName
     ) {
         let shape = new Spline(controlPoints, degree, knots, weights, fitPoints);
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
 
         return this;
@@ -1335,7 +1337,7 @@ class Drawing {
             startAngle,
             endAngle
         );
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
 
         return this;
@@ -1358,7 +1360,7 @@ class Drawing {
      */
     drawFace(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, lineTypeName) {
         let shape = new Face(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4);
-        shape.setLineType(lineTypeName);
+        shape.setLineType(lineTypeName || this.activeLayer.lineTypeName);
         this.drawItem(shape);
 
         return this;
@@ -1453,6 +1455,7 @@ class Drawing {
         if (!this.tables["UCS"]) {
             this.addTable("UCS");
         }
+        
         let appIdTable = this.tables["APPID"];
         if (!appIdTable) {
             appIdTable = this.addTable("APPID");
@@ -1470,12 +1473,14 @@ class Drawing {
 
         appIdTable.add(this._assignHandle(new AppId("ACAD")));
 
-        this.modelSpace = this.addBlock("*Model_Space");
-        this.paperSpace = this.addBlock("*Paper_Space");
+        this.addBlock("*Model_Space");
+        this.addBlock("*Paper_Space");
+        this.addBlock("*Paper_Space0");
 
         const d = new Dictionary();
         this._assignHandle(d);
         this.dictionary.addChildDictionary("ACAD_GROUP", d);
+        
     }
 
     toDxfString() {
@@ -1541,7 +1546,9 @@ class Drawing {
         s += "0\nSECTION\n";
         s += "2\nENTITIES\n";
         for (const block of Object.values(this.blocks)) {
-            s += block.reference.toDxfString();
+            if (block.shapes?.length > 0) {
+              s += block.reference.toDxfString();
+            }
         }
         for (let i = 0; i < this.shapes.length; ++i) {
             const shape = this.shapes[i];

@@ -1,6 +1,6 @@
 const BaseEntity = require('./BaseEntity')
 
-class BlockRecord extends BaseEntity {
+class BlockReference extends BaseEntity {
     constructor(name) {
         super("INSERT")
         this.name = name
@@ -21,4 +21,4 @@ class BlockRecord extends BaseEntity {
     }
 }
 
-module.exports = BlockRecord
+module.exports = BlockReference

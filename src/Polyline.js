@@ -31,15 +31,16 @@ class Polyline extends BaseEntity
             s += `43\n${this.startWidth}\n`;
         }
 
-        for (const p of this.points) {
-            s += `10\n${p[0]}\n20\n${p[1]}\n`;
+        this.points.forEach((point) => {
+            const [x, y, z] = point;
+            s += `10\n${x}\n20\n${y}\n`;
             if (this.startWidth !== 0 || this.endWidth !== 0) {
                 s += `40\n${this.startWidth}\n41\n${this.endWidth}\n`;
             }
-            if (p[2] !== undefined) {
-                s += `42\n${p[2]}\n`;
+            if (z !== undefined) {
+                s += `42\n${z}\n`;
             }
-        }
+        })
 
         return s;
     }

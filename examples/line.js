@@ -11,4 +11,5 @@ d.drawLine(50, 50, 100, 100)
  .drawLine(150, 50, 100, 0)
  .drawLine(100, 0, 50, 50)
 
+d.generateAutocadExtras()
 fs.writeFileSync(__filename + '.dxf', d.toDxfString());
