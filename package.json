@@ -28,6 +28,6 @@
   "homepage": "https://github.com/ognjen-petrovic/js-dxf#readme",
   "devDependencies": {
     "browserify": "^16.2.3",
-    "minimist": ">=1.2.3"
+    "minimist": "^1.2.6"
   }
 }
